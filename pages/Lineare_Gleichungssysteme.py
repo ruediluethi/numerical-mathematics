@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import matplotlib.pyplot as plt
 
 st.title('Lösen von linearen Gleichungssystemen')
 
@@ -153,6 +154,120 @@ def QR_solver(A, b):
 
 
 st.header('Iterative Verfahren')
+
+st.subheader('Gradienten')
+
+st.write(r'''
+    Sei $A \in \mathbb{R}^{n \times n}$ symmetrisch positiv definit, 
+    so kann das Gleichungssystem $Ax = b$ durch minimieren der Funktion 
+    $f(x) = \frac{1}{2} x^\top A x - x^\top b$ gelöst werden.
+    ''')
+
+st.write(r'''
+    Denn für ein Minimum von $f(x)$ muss $f'(x) = \nabla f(x) = Ax - b \stackrel{!}{=} 0 \Leftrightarrow Ax = b$
+    gelten. Weiter gilt nach Voraussetzung $f''(x) = H_f(x) = A$ positiv definit.
+    ''')
+
+st.write(r'''
+    Um nun das Minimum der Funktion $f(x)$ zu finden, gehen wir von einem Startwert $x_0 \in \mathbb{R}^n$
+    in Schritten $k = 1, 2, ... $ in Richtung des steilsten Abstieges mit dem Residuums $r^{(k)}$ ($\Vert d^{(k)} \Vert = $ Fehlertoleranz) und einer Schrittlänge von $\lambda \in \mathbb{R}$.
+    ''')
+
+st.latex(r'''
+    r^{(k)} = -\nabla f(x^{(k)}) = b - Ax^{(k)} \\
+    \Rightarrow\quad x^{(k+1)} = x^{(k)} + \lambda r^{(k)}
+    ''')
+
+A = np.random.rand(2,2)
+A = A.T @ A
+# A = np.array([0.5, 0.5, 0.5, 0.9]).reshape(2,2)
+A = np.array([0.5, 0.25, 0.25, 0.7]).reshape(2,2)
+st.write(A)
+# b = np.random.rand(2,1)
+b = np.array([1, 2]).reshape(2,1)
+x_sol = QR_solver(A, b)
+
+max_it = 3
+x = np.zeros((2,max_it))
+
+grid_res = 20
+grid_size = 1
+
+# x[:,0] = np.array([
+#     x_sol[0]+grid_size*(np.random.rand(1)-0.5)*2, 
+#     x_sol[1]+grid_size*(np.random.rand(1)-0.5)*2
+# ]).reshape(2,)
+x[:,0] = np.array([1.3,1.75]).reshape(2,)
+
+for k in range(0,max_it-1):
+
+    x_k = x[:,k].reshape((2,1))
+    r_k = b - (A @ x_k)
+
+    Ar = A @ r_k
+
+    step_size = (r_k.T @ r_k) / (r_k.T @ Ar)
+    x_next = x_k + step_size * r_k
+    x[:,k+1] = x_next.reshape(2,)
+
+    step_res = 100
+    steps = np.linspace(0, step_size*2, step_res).reshape(step_res,1)
+    f_step = np.zeros(step_res)
+    for i in range(0,step_res):
+        x_i = x_k + steps[i] * r_k
+        f_step[i] = 1/2 * x_i.T @ A @ x_i - b.T @ x_i
+
+    fig, ax = plt.subplots()
+    ax.plot(steps, f_step)
+    st.pyplot(fig)
+
+    # r_k = b - A @ x[:,k].reshape((2,1))
+    
+    # st.write(r_k.shape)
+
+    # step_size = 0.1 # lambda
+    # x[:,k+1] = x[:,k].reshape((2,1)) + step_size * r_k
+
+grid_x, grid_y = np.meshgrid(
+    np.linspace(x_sol[0]-grid_size, x_sol[0]+grid_size, grid_res), 
+    np.linspace(x_sol[1]-grid_size, x_sol[1]+grid_size, grid_res)
+)
+
+field_u, field_v = np.meshgrid(np.zeros(grid_res), np.zeros(grid_res))
+
+f_x = np.zeros((grid_res, grid_res))
+
+for i in range(0,grid_res):
+    for j in range(0,grid_res):
+        x_ij = np.array([grid_x[i,j], grid_y[i,j]]).reshape(2,1)
+        grad_ij = A @ x_ij - b
+        field_u[i,j] = grad_ij[0] / np.linalg.norm(grad_ij)
+        field_v[i,j] = grad_ij[1] / np.linalg.norm(grad_ij)
+        f_x[i,j] = 1/2 * x_ij.T @ A @ x_ij - b.T @ x_ij
+
+
+img_extent = [
+    (x_sol[0]-grid_size)[0], 
+    (x_sol[0]+grid_size)[0], 
+    (x_sol[1]-grid_size)[0], 
+    (x_sol[1]+grid_size)[0]
+]
+
+fig, ax = plt.subplots()
+ax.imshow(np.flip(f_x,0), extent=img_extent)
+ax.quiver(grid_x, grid_y, field_u, field_v)
+ax.contour(grid_x, grid_y, f_x, 9, colors='white')
+ax.plot(x[0,:], x[1,:], 'w.-')
+ax.plot(x_sol[0,:], x_sol[1,:], 'o')
+ax.axis('scaled')
+st.pyplot(fig)
+
+
+
+
+x_sol = QR_solver(A, b)
+st.write(x_sol)
+st.write(A @ x_sol)
 
 
 st.header('Verfahren im Vergleich')

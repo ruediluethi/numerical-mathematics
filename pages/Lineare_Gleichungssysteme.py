@@ -158,75 +158,68 @@ st.header('Iterative Verfahren')
 st.subheader('Gradienten')
 
 st.write(r'''
-    Sei $A \in \mathbb{R}^{n \times n}$ symmetrisch positiv definit, 
-    so kann das Gleichungssystem $Ax = b$ durch minimieren der Funktion 
+    Sei $A \in \mathbb{R}^{n \times n}$ symmetrisch positiv definit.
+    So kann das Gleichungssystem $Ax = b$ durch minimieren der Funktion 
     $f(x) = \frac{1}{2} x^\top A x - x^\top b$ gelöst werden.
     ''')
 
 st.write(r'''
-    Denn für ein Minimum von $f(x)$ muss $f'(x) = \nabla f(x) = Ax - b \stackrel{!}{=} 0 \Leftrightarrow Ax = b$
-    gelten. Weiter gilt nach Voraussetzung $f''(x) = H_f(x) = A$ positiv definit.
+    Denn für ein Minimum von $f(x)$ muss die Ableitung/Gradient
+    $f'(x) = \nabla f(x) = Ax - b \stackrel{!}{=} 0 \Leftrightarrow Ax = b$
+    gleich Null sein.
+    Weiter gilt nach Voraussetzung $f''(x) = H_f(x) = A$ positiv definit.
     ''')
 
 st.write(r'''
-    Um nun das Minimum der Funktion $f(x)$ zu finden, gehen wir von einem Startwert $x_0 \in \mathbb{R}^n$
-    in Schritten $k = 1, 2, ... $ in Richtung des steilsten Abstieges mit dem Residuums $r^{(k)}$ ($\Vert d^{(k)} \Vert = $ Fehlertoleranz) und einer Schrittlänge von $\lambda \in \mathbb{R}$.
+    Um nun das Minimum der Funktion $f(x)$ zu finden, 
+    gehen wir von einem Startwert $x_0 \in \mathbb{R}^n$
+    in Richtung des steilsten Abstieges $r_0 = -\nabla f(x_0) = b - Ax_0$.
     ''')
-
-st.latex(r'''
-    r^{(k)} = -\nabla f(x^{(k)}) = b - Ax^{(k)} \\
-    \Rightarrow\quad x^{(k+1)} = x^{(k)} + \lambda r^{(k)}
-    ''')
-
-A = np.random.rand(2,2)
-A = A.T @ A
-# A = np.array([0.5, 0.5, 0.5, 0.9]).reshape(2,2)
-A = np.array([0.5, 0.25, 0.25, 0.7]).reshape(2,2)
-st.write(A)
-# b = np.random.rand(2,1)
-b = np.array([1, 2]).reshape(2,1)
-x_sol = QR_solver(A, b)
-
-max_it = 3
-x = np.zeros((2,max_it))
 
 grid_res = 20
 grid_size = 1
 
-# x[:,0] = np.array([
-#     x_sol[0]+grid_size*(np.random.rand(1)-0.5)*2, 
-#     x_sol[1]+grid_size*(np.random.rand(1)-0.5)*2
-# ]).reshape(2,)
-x[:,0] = np.array([1.3,1.75]).reshape(2,)
+A_default = np.array([0.9, 0.65, 0.65, 1]).reshape(2,2)
+b_default = np.array([1, 2]).reshape(2,1)
+x_0_default = np.array([-1.35,2.95])
 
-for k in range(0,max_it-1):
+# init session states with default values
+if 'A' not in st.session_state:
+    st.session_state.A = A_default
+if 'b' not in st.session_state:
+    st.session_state.b = b_default
+if 'x_0' not in st.session_state:
+    st.session_state.x_0 = x_0_default
 
-    x_k = x[:,k].reshape((2,1))
-    r_k = b - (A @ x_k)
+if (st.button('Beispielwerte wiederherstellen')):
+    st.session_state.A = A_default
+    st.session_state.b = b_default
+    st.session_state.x_0 = x_0_default
 
-    Ar = A @ r_k
+if (st.button('Zufälliges Gleichungssystem Ax = b generieren')):
+    A = np.random.rand(2,2)
+    A = A.T @ A
+    st.session_state.A = A
+    b = np.random.rand(2,1)
+    st.session_state.b = b
+    x_sol = QR_solver(A, b)
+    st.session_state.x_0 = np.array([
+        x_sol[0]+grid_size*(np.random.rand(1)-0.5)*2, 
+        x_sol[1]+grid_size*(np.random.rand(1)-0.5)*2
+    ])
 
-    step_size = (r_k.T @ r_k) / (r_k.T @ Ar)
-    x_next = x_k + step_size * r_k
-    x[:,k+1] = x_next.reshape(2,)
+A = st.session_state.A
+b = st.session_state.b
 
-    step_res = 100
-    steps = np.linspace(0, step_size*2, step_res).reshape(step_res,1)
-    f_step = np.zeros(step_res)
-    for i in range(0,step_res):
-        x_i = x_k + steps[i] * r_k
-        f_step[i] = 1/2 * x_i.T @ A @ x_i - b.T @ x_i
+if (st.button('Zufälliger Startwert generieren')):
+    x_sol = QR_solver(A, b)
+    st.session_state.x_0 = np.array([
+        x_sol[0]+grid_size*(np.random.rand(1)-0.5)*2, 
+        x_sol[1]+grid_size*(np.random.rand(1)-0.5)*2
+    ])
 
-    fig, ax = plt.subplots()
-    ax.plot(steps, f_step)
-    st.pyplot(fig)
-
-    # r_k = b - A @ x[:,k].reshape((2,1))
-    
-    # st.write(r_k.shape)
-
-    # step_size = 0.1 # lambda
-    # x[:,k+1] = x[:,k].reshape((2,1)) + step_size * r_k
+# generate grid to plot vectorfield
+x_sol = QR_solver(A, b)
 
 grid_x, grid_y = np.meshgrid(
     np.linspace(x_sol[0]-grid_size, x_sol[0]+grid_size, grid_res), 
@@ -253,36 +246,166 @@ img_extent = [
     (x_sol[1]+grid_size)[0]
 ]
 
+# calc first step
+x_0 = st.session_state.x_0.reshape(2,1)
+r_0 = b - A @ x_0
+
+lambda_min = (r_0.T @ r_0) / (r_0.T @ A @ r_0)
+
+x_1 = x_0 + lambda_min * r_0
+x_end = x_0 + lambda_min * 1.5 * r_0
+
 fig, ax = plt.subplots()
-ax.imshow(np.flip(f_x,0), extent=img_extent)
-ax.quiver(grid_x, grid_y, field_u, field_v)
-ax.contour(grid_x, grid_y, f_x, 9, colors='white')
-ax.plot(x[0,:], x[1,:], 'w.-')
-ax.plot(x_sol[0,:], x_sol[1,:], 'o')
+ax.set_title(r'f(x)')
+ax.imshow(np.flip(f_x,0), extent=img_extent, cmap='Greys')
+ax.quiver(grid_x, grid_y, field_u, field_v, color='grey', label=r'Gradient $\nabla f(x)$')
+ax.contour(grid_x, grid_y, f_x, 9, colors='black')
+ax.plot(x_sol[0,:], x_sol[1,:], 'kx', label=r'$A^{-1}b$')
+ax.plot([x_0[0,:], x_end[0,:]], [x_0[1,:], x_end[1,:]], 'k-', label=r'$F(\lambda) = x_0 + \lambda r_0$')
+ax.plot(x_0[0,:], x_0[1,:], 'ko', label=r'$x_0$')
+ax.plot(x_1[0,:], x_1[1,:], 'k.', label=r'$x_1$')
 ax.axis('scaled')
+ax.legend()
+st.pyplot(fig)
+
+
+st.write(r'''
+    Entlang der Geraden $x_0 + \lambda r_0$ wird der Funktionswert
+    $F(\lambda) = f(x_0 + \lambda r_0)$ für ein $\lambda \in \mathbb{R}$
+    erstmals kleiner. Wobei das Minimum von $f(x)$ nicht erreicht wird.
+    Also wird am Minimum von $F(\lambda_{\min}) \rightarrow \min$ 
+    für $x_1 = x_0 + \lambda_{\min} r_0$ erneut die Abstiegsrichtung
+    bestimmt $r_1 = -\nabla f(x_1) = b - Ax_1$.
+    ''')
+
+step_res = 100
+steps = np.linspace(0, lambda_min[0] * 1.5, step_res)
+F_of_lambda = np.zeros(step_res)
+for i in range(0,step_res):
+    x_lambda = x_0 + steps[i] * r_0
+    F_of_lambda[i] = 1/2 * x_lambda.T @ A @ x_lambda - b.T @ x_lambda
+
+x_lambda_min = x_0 + lambda_min * r_0
+F_of_lambda_min = 1/2 * x_lambda_min.T @ A @ x_lambda_min - b.T @ x_lambda_min
+
+fig, ax = plt.subplots()
+ax.plot(steps, F_of_lambda, 'k', label=r'$F(\lambda)$')
+ax.plot(lambda_min, F_of_lambda_min, 'ko', label=r'$\lambda_{\min}$')
+ax.legend()
+st.pyplot(fig)
+
+st.write(r'''
+    Die Funktion $F: \lambda \in \mathbb{R} \rightarrow \mathbb{R}$ ist 
+    eine quadratische reellwertige Funktion.
+    ''')
+st.latex(r'''
+    F(\lambda) = f(x + \lambda r) = \frac{1}{2} \left( x + \lambda r \right)^\top A \left( x + \lambda r \right) - \left( x + \lambda r \right)^\top b \\
+	= \frac{1}{2} \left( x^\top A x + \underbrace{x^\top A \lambda r + \lambda r^\top A x}_{= ~ 2\lambda ~ r^\top A x \textrm{ (da skalar)}} + \lambda r^\top A \lambda r \right) - \left( x^\top b + \lambda r^\top b \right) \\
+	= \frac{1}{2} \lambda^2 r^\top A r + \lambda\left( r^\top A x- r^\top b \right) + \underbrace{\frac{1}{2}x^\top A x - x^\top b}_{=~f(x)}
+    ''')
+st.write(r'''
+    Weiter gilt $F(\lambda_{\min}) \rightarrow \min \Leftrightarrow F'(\lambda_{\min}) \stackrel{!}{=} 0$.
+    ''')
+st.latex(r'''
+    F'(\lambda) = \lambda r^\top A r  + r^\top A x - r^\top b \stackrel{!}{=} 0 \\
+	\Rightarrow \lambda_{\min} = \frac{r^\top b - r^\top A x}{r^\top A r} 
+	= \frac{r^\top \overbrace{(b - Ax)}^{=~r}}{r^\top A r}
+	= \frac{\left\langle r, r \right\rangle}{\left\langle r, Ar \right\rangle}
+    ''')
+
+st.write(r'''
+    Das Verfahren wird solange wiederholt, bis für den Betrag das Residuum $r = b - Ax$ 
+    eine gewisse Toleranz $\left\Vert r \right\Vert < \textrm{tol}$ unterschritten ist.
+    ''')
+
+max_it = 10
+
+x_sol = QR_solver(A, b)
+x = np.zeros((2,max_it))
+x[:,0] = x_0.reshape(2,)
+
+
+for k in range(0,max_it-1):
+
+    x_k = x[:,k].reshape((2,1))
+    r_k = b - (A @ x_k)
+
+    Ar = A @ r_k
+
+    step_size = (r_k.T @ r_k) / (r_k.T @ Ar)
+    x_next = x_k + step_size * r_k
+    x[:,k+1] = x_next.reshape(2,)
+
+fig, ax = plt.subplots()
+ax.set_title(r'f(x)')
+ax.imshow(np.flip(f_x,0), extent=img_extent, cmap='Greys')
+ax.quiver(grid_x, grid_y, field_u, field_v, color='grey')
+ax.contour(grid_x, grid_y, f_x, 9, colors='black')
+ax.plot(x_sol[0,:], x_sol[1,:], 'kx', label=r'$A^{-1}b$')
+ax.plot(x[0,:], x[1,:], 'k.-', label=r'$x_0, x_1, ...$')
+ax.axis('scaled')
+ax.legend()
+st.pyplot(fig)
+
+st.subheader('Konjugierte Gradienten')
+
+st.write(r'''
+    Das Energieskalarprodukt $\left\langle x,y \right\rangle_A = x^\top A y = 
+    \left\langle x, Ay \right\rangle_2$ wird verwendet um mittels Gram-Schmidt-Verfahren
+    eine Orthogonale Basis für $Ax = b$ zu erzeugen. 
+    ''')
+
+#cg method
+
+max_it = 3
+
+x = np.zeros((2,max_it))
+x[:,0] = x_0.reshape(2,)
+
+r_k = b - A @ x_0
+rho = r_k.T @ r_k
+d_k = r_k
+
+for k in range(1,max_it):
+    
+    a_k = A @ d_k
+    alpha = rho / (d_k.T @ a_k)
+
+    x_prev = x[:,k-1].reshape((2,1))
+    x_k = x_prev + alpha * d_k
+    x[:,k] = x_k.reshape(2,)
+
+    r_k = r_k - alpha * a_k
+    rho_next = r_k.T @ r_k
+    d_k = r_k + rho_next/rho * d_k
+    rho = rho_next
+
+fig, ax = plt.subplots()
+ax.set_title(r'f(x)')
+ax.imshow(np.flip(f_x,0), extent=img_extent, cmap='Greys')
+ax.quiver(grid_x, grid_y, field_u, field_v, color='grey')
+ax.contour(grid_x, grid_y, f_x, 9, colors='black')
+ax.plot(x_sol[0,:], x_sol[1,:], 'kx', label=r'$A^{-1}b$')
+ax.plot(x[0,:], x[1,:], 'k.-', label=r'$x_0, x_1, x_2 = A^{-1}b$')
+ax.axis('scaled')
+ax.legend()
 st.pyplot(fig)
 
 
 
-
-x_sol = QR_solver(A, b)
-st.write(x_sol)
-st.write(A @ x_sol)
-
-
-st.header('Verfahren im Vergleich')
+# st.header('Verfahren im Vergleich')
 n = 5
 A = np.random.rand(n,n)
-st.write(A)
+# st.write(A)
 
 b = np.random.rand(n).reshape((n,1))
-st.write(b)
+# st.write(b)
 
 x = QR_solver(A, b)
-st.write(x)
+# st.write(x)
 
 err = np.linalg.norm(b - (A @ x))
-st.write(err)
+# st.write(err)
 
 # G1 = givens_rotation(A,3,1)
 

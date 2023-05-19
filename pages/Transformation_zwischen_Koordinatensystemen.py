@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.express as px
 
 from scipy import optimize
-import random
+# import random
 
 
 st.title('Transformation zwischen Koordinatensystemen')

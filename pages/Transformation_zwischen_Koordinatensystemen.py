@@ -22,8 +22,9 @@ st.video(video_bytes)
 
 data = np.genfromtxt(os.path.join(path_to_data, '1612262607900-Log.txt'), delimiter=',')
 
-n = min(2000,data.size)
+
 start_at = 1000
+n = min(start_at+1000,data.size)
 
 v = np.zeros(n)
 MKS = np.zeros([4,n-start_at])
@@ -73,6 +74,9 @@ for i in range(start_at,n,1):
 
     k = k+1
 
+
+t_shift_init = np.mean(MKS - WKS, axis=1)
+
 def plot_3d_lines(lines):
 
     n = 0
@@ -94,9 +98,8 @@ def plot_3d_lines(lines):
         'color': colors.flatten()
     }), x='x', y='y', z='z', color='color'))
 
-    st.write(colors)
-
 plot_3d_lines([WKS])
+plot_3d_lines([MKS])
 
 # st.subheader('Maschinen-Koordinatensystem (global)')
 # st.plotly_chart(px.scatter_3d(pd.DataFrame({
@@ -158,7 +161,7 @@ T_C_inv[0:3,3] = t_C.reshape(3,)*-1
 R_A = np.eye(4)
 R_C = np.eye(4)
 
-i_end = st.slider('step', 1, n, 100, 1)
+i_end = st.slider('step', 1, n, 500, 1)
 
 TCP_global = np.zeros([4, i_end])
 
@@ -191,8 +194,11 @@ C_axis_trafo = T_A @ R_A @ T_C @ R_C @ C_axis
 plot_3d_lines([A_axis_trafo, C_axis_trafo, WKS_trafo[:,0:i], TCP_global])
 
 
-
 def cost_fun(params, WKS, a, c, TCP_global_ref, i_end):
+
+    t_shift = np.array([[params[4], params[5], params[6]]])
+    T_shift = np.eye(4)
+    T_shift[0:3,3] = t_shift.reshape(3,)*-1
 
     t_A = np.array([[0, params[0], params[1]]])
     T_A = np.eye(4)
@@ -230,29 +236,80 @@ def cost_fun(params, WKS, a, c, TCP_global_ref, i_end):
             [ 0, 0, 0, 1 ]
         ])
 
-        WKS_trafo = T_A @ R_A @ T_C @ R_C @ T_C_inv @ T_A_inv @ WKS
+        WKS_trafo = T_A @ R_A @ T_C @ R_C @ T_C_inv @ T_A_inv @ T_shift @ WKS
         TCP_global[:,i] = WKS_trafo[:,i]
 
     return np.linalg.norm(TCP_global - TCP_global_ref)
 
-st.write(t_A, t_C)
+st.write(t_A, t_C, t_shift_init)
 
 # random_range = st.slider('random range', 0, 100, 10)
+
 
 params_fitted = optimize.fmin(cost_fun, [
     # t_A[0,1] + random.uniform(-random_range, random_range),
     # t_A[0,2] + random.uniform(-random_range, random_range),
     # t_C[0,0] + random.uniform(-random_range, random_range),
     # t_C[0,1] + random.uniform(-random_range, random_range)
-    1, 1, 1, 1
+    1, 1, 1, 1, 
+    # 0, 0, 0
+    t_shift_init[0],
+    t_shift_init[1],
+    t_shift_init[2]
     # 0, 0, 0, 0
-], args=(WKS, a, c, TCP_global, i_end))
+], args=(MKS, a, c, TCP_global, i_end))
 st.write(params_fitted)
 
 
+t_shift = np.array([[params_fitted[4], params_fitted[5], params_fitted[6]]])
+T_shift = np.eye(4)
+T_shift[0:3,3] = t_shift.reshape(3,)*-1
+
+t_A = np.array([[0, params_fitted[0], params_fitted[1]]])
+T_A = np.eye(4)
+T_A[0:3,3] = t_A.reshape(3,)
+T_A_inv = np.eye(4)
+T_A_inv[0:3,3] = t_A.reshape(3,)*-1
+
+t_C = np.array([[params_fitted[2], params_fitted[3], 0]])
+T_C = np.eye(4)
+T_C[0:3,3] = t_C.reshape(3,)
+T_C_inv = np.eye(4)
+T_C_inv[0:3,3] = t_C.reshape(3,)*-1
+
+R_A = np.eye(4)
+R_C = np.eye(4)
+
+TCP_global_fitted = np.zeros([4, i_end])
+
+for i in range(0,i_end):
+
+    alpha = -a[i]/360 * 2*math.pi
+    gamma = -c[i]/360 * 2*math.pi
+
+    R_A = np.array([
+        [ 1, 0, 0, 0 ],
+        [ 0, math.cos(alpha), -math.sin(alpha), 0 ],
+        [ 0, math.sin(alpha),  math.cos(alpha), 0 ],
+        [ 0, 0, 0, 1 ]
+    ])
+
+    R_C = np.array([
+        [ math.cos(gamma), -math.sin(gamma), 0, 0 ],
+        [ math.sin(gamma),  math.cos(gamma), 0, 0 ],
+        [ 0, 0, 1, 0 ],
+        [ 0, 0, 0, 1 ]
+    ])
+
+    WKS_trafo = T_A @ R_A @ T_C @ R_C @ T_C_inv @ T_A_inv @ T_shift @ MKS
+    TCP_global_fitted[:,i] = WKS_trafo[:,i]
+
+A_axis_trafo = T_A @ R_A @ A_axis
+C_axis_trafo = T_A @ R_A @ T_C @ R_C @ C_axis
 
 
-
+plot_3d_lines([A_axis_trafo, C_axis_trafo, WKS_trafo[:,0:i], TCP_global_fitted])
+plot_3d_lines([TCP_global, TCP_global_fitted])
 
 # st.header('G550 5-Achs-Universalmaschine')
 

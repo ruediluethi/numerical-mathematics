@@ -181,6 +181,11 @@ grid_size = 1
 
 A_default = np.array([0.9, 0.65, 0.65, 1]).reshape(2,2)
 b_default = np.array([1, 2]).reshape(2,1)
+# A_default = np.array([2, 1, -1, 2]).reshape(2,2)
+# st.write(A_default)
+# st.write(A_default.T)
+# b_default = np.array([3, 4]).reshape(2,1)
+
 x_0_default = np.array([-1.35,2.95])
 
 # init session states with default values
@@ -318,7 +323,7 @@ st.write(r'''
     eine gewisse Toleranz $\left\Vert r \right\Vert < \textrm{tol}$ unterschritten ist.
     ''')
 
-max_it = 10
+max_it = 30
 
 x_sol = QR_solver(A, b)
 x = np.zeros((2,max_it))
@@ -357,7 +362,7 @@ st.write(r'''
 
 #cg method
 
-max_it = 3
+# max_it = 3
 
 x = np.zeros((2,max_it))
 x[:,0] = x_0.reshape(2,)

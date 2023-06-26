@@ -333,7 +333,9 @@ phiY = math.atan2(coefsY[1], coefsY[2])
 if phiY < 0:
   phiY = phiY * -1
 else:
-  phiY = 2*math.pi - phiY + phiY_shift
+  phiY = 2*math.pi - phiY
+
+phiY = phiY + phiY_shift
 
 approxX_shifted = calc_trig_line(coefsX, phiX, 2*math.pi + phiX, res)
 approxY_shifted = calc_trig_line(coefsY, phiY, 2*math.pi + phiY, res)

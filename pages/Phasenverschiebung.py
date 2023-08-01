@@ -1,4 +1,5 @@
 import os
+from matplotlib.transforms import Bbox
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -10,9 +11,11 @@ import matplotlib.pyplot as plt
 st.title('Phasenverschiebung')
 
 
-@st.experimental_memo
+@st.cache_data
 def get_data():
-    raw_file = os.path.join('data', 'measurement_20230523T115545335_2', 'measurement_20230523T115545335_2_0xA440.csv')  # noqa: E501
+    # raw_file = os.path.join('data', 'measurement_20230523T115545335_2', 'measurement_20230523T115545335_2_0xA440.csv')  # noqa: E501
+    raw_file = os.path.join('data', 'measurement_2022-04-13T104040812_893_0xA265.csv')  # noqa: E501
+
 
     df = pd.read_csv(raw_file, skiprows=[1])
     df.describe()
@@ -33,10 +36,10 @@ def get_data():
 t, bmX, bmY = get_data()
 
 n_part = st.slider('n_part', 1, 3000, 1000, 1)
-start_i = st.slider('start_i', 0, bmX.size, 40000, 1)
+start_i = st.slider('start_i', 0, bmX.size, 20000, 1)
 end_i = start_i + n_part
 
-@st.experimental_memo
+@st.cache_data
 def get_part(start_i, end_i, t, bmX, bmY):
     fig, ax = plt.subplots()
     ax.plot(bmX)
@@ -161,7 +164,7 @@ def calc_polyline(coefs, a, b, res):
 
   return polyline
 
-@st.experimental_memo
+@st.cache_data
 def calc_rotation_freq(f, duration):
 
   fig, ax = plt.subplots()
@@ -288,7 +291,7 @@ def eval_trig_approx(coefs, t_i):
   return f_i
 
 
-res = 100
+res = 1000
 
 def calc_trig_line(coefs, a, b, res = 100):
   f = np.zeros([res,1])
@@ -299,10 +302,13 @@ def calc_trig_line(coefs, a, b, res = 100):
 
   return f
 
-coefsX = trig_approx(bmX_part, t_cutted, 1)
+
+order = st.slider('order', 10, 30, 1, 1)
+
+coefsX = trig_approx(bmX_part, t_cutted, order)
 approxX = calc_trig_line(coefsX, 0, 2*math.pi, res)
 
-coefsY = trig_approx(bmY_part, t_cutted, 1)
+coefsY = trig_approx(bmY_part, t_cutted, order)
 approxY = calc_trig_line(coefsY, 0, 2*math.pi, res)
 
 roundabout = np.linspace(0, 2*math.pi, res)
@@ -316,61 +322,77 @@ st.pyplot(fig)
 
 
 phiX_shift = st.slider('x shift', -math.pi, math.pi, 0.0, 0.01)
-phiY_shift = st.slider('y shift', -math.pi, math.pi, 0.0, 0.01)
+amount_of_frames = 25*10
+phiY_shift_index = st.slider('y shift', 1, amount_of_frames, 1, 1)
 
-phiX = math.atan2(coefsX[1], coefsX[2])
-if phiX < 0:
-  phiX = phiX * -1
-else:
-  phiX = 2*math.pi - phiX
+if 1 == 1:
+# for phiY_shift_index in range(1,amount_of_frames):
+  phiY_shift = -math.pi + 2*math.pi*phiY_shift_index/amount_of_frames
 
-phiX = phiX - math.pi/2 + phiX_shift
+  phiX = math.atan2(coefsX[1], coefsX[2])
+  if phiX < 0:
+    phiX = phiX * -1
+  else:
+    phiX = 2*math.pi - phiX
 
-# approxX_max_i = np.argmax(approxX)
-# st.write(roundabout[approxX_max_i]-math.pi/2, phiX)
+  phiX = phiX - math.pi/2 + phiX_shift
 
-phiY = math.atan2(coefsY[1], coefsY[2])
-if phiY < 0:
-  phiY = phiY * -1
-else:
-  phiY = 2*math.pi - phiY
+  # approxX_max_i = np.argmax(approxX)
+  # st.write(roundabout[approxX_max_i]-math.pi/2, phiX)
 
-phiY = phiY + phiY_shift
+  phiY = math.atan2(coefsY[1], coefsY[2])
+  if phiY < 0:
+    phiY = phiY * -1
+  else:
+    phiY = 2*math.pi - phiY
 
-approxX_shifted = calc_trig_line(coefsX, phiX, 2*math.pi + phiX, res)
-approxY_shifted = calc_trig_line(coefsY, phiY, 2*math.pi + phiY, res)
+  phiY = phiY + phiY_shift
 
-tX_cutted = np.zeros((n_part,1))
-tY_cutted = np.zeros((n_part,1))
-for i in range(0,n_part):
-  tX_cutted[i] = ((t_part[i] % delta_t) / delta_t * 2 * math.pi - phiX) % (2*math.pi)
-  tY_cutted[i] = ((t_part[i] % delta_t) / delta_t * 2 * math.pi - phiY) % (2*math.pi)
+  approxX_shifted = calc_trig_line(coefsX, phiX, 2*math.pi + phiX, res)
+  approxY_shifted = calc_trig_line(coefsY, phiY, 2*math.pi + phiY, res)
 
-fig, ax = plt.subplots()
-ax.plot(tX_cutted, bmX_part, '.')
-ax.plot(tY_cutted, bmY_part, '.')
-ax.plot(roundabout, approxX_shifted)
-ax.plot(roundabout, approxY_shifted)
-st.pyplot(fig)
+  tX_cutted = np.zeros((n_part,1))
+  tY_cutted = np.zeros((n_part,1))
+  for i in range(0,n_part):
+    tX_cutted[i] = ((t_part[i] % delta_t) / delta_t * 2 * math.pi - phiX) % (2*math.pi)
+    tY_cutted[i] = ((t_part[i] % delta_t) / delta_t * 2 * math.pi - phiY) % (2*math.pi)
+
+  fig, ax = plt.subplots()
+  ax.plot(tX_cutted, bmX_part, '.')
+  ax.plot(tY_cutted, bmY_part, '.')
+  ax.plot(roundabout, approxX_shifted)
+  ax.plot(roundabout, approxY_shifted)
+  st.pyplot(fig)
 
 
-tX_sorted_ind = np.argsort(tX_cutted.flatten())
-tY_sorted_ind = np.argsort(tY_cutted.flatten())
+  tX_sorted_ind = np.argsort(tX_cutted.flatten())
+  tY_sorted_ind = np.argsort(tY_cutted.flatten())
 
-bmX_rearranged = np.take_along_axis(bmX_part.flatten(), tX_sorted_ind, axis=-1) 
-bmY_rearranged = np.take_along_axis(bmY_part.flatten(), tY_sorted_ind, axis=-1) 
+  bmX_rearranged = np.take_along_axis(bmX_part.flatten(), tX_sorted_ind, axis=-1) 
+  bmY_rearranged = np.take_along_axis(bmY_part.flatten(), tY_sorted_ind, axis=-1) 
 
-# tX_i_min = np.argmin(tX_cutted)
-# tY_i_min = np.argmin(tY_cutted)
+  # tX_i_min = np.argmin(tX_cutted)
+  # tY_i_min = np.argmin(tY_cutted)
 
-# bmX_rearranged = np.zeros((n_part,1))
-# bmY_rearranged = np.zeros((n_part,1))
-# for i in range(0,n_part):
-#   bmX_rearranged[i] = bmX_part[(i+tX_i_min) % n_part]
-#   bmY_rearranged[i] = bmY_part[(i+tY_i_min) % n_part]
+  # bmX_rearranged = np.zeros((n_part,1))
+  # bmY_rearranged = np.zeros((n_part,1))
+  # for i in range(0,n_part):
+  #   bmX_rearranged[i] = bmX_part[(i+tX_i_min) % n_part]
+  #   bmY_rearranged[i] = bmY_part[(i+tY_i_min) % n_part]
 
-fig, ax = plt.subplots()
-ax.plot(bmX_part, bmY_part, '.')
-ax.plot(bmX_rearranged, bmY_rearranged, 'x')
-ax.axis('equal')
-st.pyplot(fig)
+  fig, ax = plt.subplots()
+  # ax.plot(bmX_part, bmY_part, '.')
+  ax.plot(bmX_rearranged, bmY_rearranged, 'k.', 
+          alpha=0.01, 
+          markersize=30,
+          markeredgewidth=0)
+  ax.plot(approxX_shifted, approxY_shifted, 'k-')
+  ax.axis('equal')
+  ax.set_xlim([-30, 30])
+  ax.set_ylim([-30, 30])
+  fig.savefig('output/test'+f"{phiY_shift_index:03d}"+'.png', 
+              bbox_inches=Bbox([[1.5, 0.7], [5, 4.2]]),
+              dpi=300)
+  st.pyplot(fig)
+
+  st.write(phiY_shift_index)

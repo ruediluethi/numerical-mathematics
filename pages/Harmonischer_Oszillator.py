@@ -160,7 +160,7 @@ i_end = int(disp_range[0] + new_block_at[block_index])
 
 fig, ax = plt.subplots()
 ax.set_title('Accelerometer')
-ax.plot(a_z[i_start:i_end], label='z')
+ax.plot(t[i_start:i_end], a_z[i_start:i_end], label='z')
 ax.legend()
 st.pyplot(fig)
 
@@ -217,5 +217,41 @@ ax.plot(frequencies_pitch[freq_range[0]:freq_range[1],0],
         frequencies_pitch[freq_range[0]:freq_range[1],1] / np.amax(frequencies_pitch[:,1]), ':', label='pitch')
 ax.plot(frequencies_roll[freq_range[0]:freq_range[1],0], 
         frequencies_roll[freq_range[0]:freq_range[1],1] / np.amax(frequencies_roll[:,1]), ':', label='roll')
+ax.legend()
+st.pyplot(fig)
+
+fig, ax = plt.subplots()
+ax.set_title('Bode-Plot')
+ax.plot(frequencies_v_x[freq_range[0]:freq_range[1],0], 
+        frequencies_v_x[freq_range[0]:freq_range[1],2], label='real')
+ax.plot(frequencies_v_x[freq_range[0]:freq_range[1],0], 
+        frequencies_v_x[freq_range[0]:freq_range[1],3], label='imag')
+ax.legend()
+st.pyplot(fig)
+
+fig, ax = plt.subplots()
+ax.set_title('Bode-Plot')
+ax.plot(frequencies_v_x[freq_range[0]:freq_range[1],0], 
+        frequencies_v_x[freq_range[0]:freq_range[1],4])
+ax.legend()
+st.pyplot(fig)
+
+v_y_i_max = np.argmax(v_y[i_start:i_end]) + i_start
+
+freq_v_y_i_max = np.argmax(frequencies_v_y[:,1])
+freq_v_y_max = frequencies_v_x[freq_v_y_i_max,0]
+st.write(freq_v_y_max)
+
+t_part = t[v_y_i_max:i_end] - t[v_y_i_max]
+
+sin_wave = np.zeros(t_part.size)
+for i in range(0, t_part.size):
+    sin_wave[i] = math.cos(2*math.pi * t_part[i] / freq_v_y_max)*0.1
+
+
+fig, ax = plt.subplots()
+ax.set_title('Gyroscope')
+ax.plot(t_part, v_y[v_y_i_max:i_end], label='y')
+ax.plot(t_part, sin_wave, label='sin')
 ax.legend()
 st.pyplot(fig)

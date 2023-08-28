@@ -15,6 +15,7 @@ st.title('Phasenverschiebung')
 def get_data():
     # raw_file = os.path.join('data', 'measurement_20230523T115545335_2', 'measurement_20230523T115545335_2_0xA440.csv')  # noqa: E501
     raw_file = os.path.join('data', 'measurement_2022-04-13T104040812_893_0xA265.csv')  # noqa: E501
+    #raw_file = os.path.join('data', 'data.csv')  # noqa: E501
 
 
     df = pd.read_csv(raw_file, skiprows=[1])
@@ -323,10 +324,10 @@ st.pyplot(fig)
 
 phiX_shift = st.slider('x shift', -math.pi, math.pi, 0.0, 0.01)
 amount_of_frames = 25*10
-phiY_shift_index = st.slider('y shift', 1, amount_of_frames, 1, 1)
+phiY_shift_index = st.slider('y shift', 1, amount_of_frames, round(amount_of_frames/2), 1)
 
-if 1 == 1:
-# for phiY_shift_index in range(1,amount_of_frames):
+#if 1 == 1:
+for phiY_shift_index in range(1,amount_of_frames):
   phiY_shift = -math.pi + 2*math.pi*phiY_shift_index/amount_of_frames
 
   phiX = math.atan2(coefsX[1], coefsX[2])

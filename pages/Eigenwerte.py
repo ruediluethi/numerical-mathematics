@@ -14,7 +14,7 @@ st.title('Eigenwerte')
 
 
 
-image = Image.open(os.path.join('data', 'images', 'clouds512.png'))
+image = Image.open(os.path.join('data', 'images', 'caterpillar1024.png'))
 
 data = np.asarray(image)
 
@@ -22,18 +22,27 @@ R = data[:,:,0]
 G = data[:,:,1]
 B = data[:,:,2]
 
+# R = np.tril(R) + np.tril(R).T - np.diag(np.diagonal(R))
+# G = np.tril(G) + np.tril(G).T - np.diag(np.diagonal(G))
+# B = np.tril(B) + np.tril(B).T - np.diag(np.diagonal(B))
+
 n = np.shape(R)[0]
+
 
 with st.sidebar:
     amount_of_singvalues = st.slider('Anzahl Werte', 1, n, n, 1)
 
 def reduce_matrix(A, amount):
+    # D, P = np.linalg.eig(A)
     U, S, Vh = np.linalg.svd(A)
 
+    # D_reduced = np.zeros((D.size, D.size))
     S_reduced = np.zeros((S.size, S.size))
     for i in range(0, amount_of_singvalues):
+        # D_reduced[i][i] = D[i]
         S_reduced[i][i] = S[i]
 
+    # A_out = P @ D_reduced @ P.T
     A_out = U @ S_reduced @ Vh
 
     A_out = np.maximum(A_out, np.zeros(S.size))
@@ -61,6 +70,8 @@ st.pyplot(fig)
 
 output = np.dstack((R_reduced,G_reduced,B_reduced))
 image_output = Image.fromarray(output)
-
 st.image(image_output)
-st.image(image)
+
+original = np.dstack((R,G,B))
+image_original = Image.fromarray(original)
+st.image(image_original)

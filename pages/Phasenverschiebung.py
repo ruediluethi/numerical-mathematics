@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 st.title('Phasenverschiebung')
 
 
-@st.cache_data
+@st.experimental_memo
 def get_data():
     # raw_file = os.path.join('data', 'measurement_20230523T115545335_2', 'measurement_20230523T115545335_2_0xA440.csv')  # noqa: E501
     raw_file = os.path.join('data', 'measurement_2022-04-13T104040812_893_0xA265.csv')  # noqa: E501
@@ -40,7 +40,7 @@ n_part = st.slider('n_part', 1, 3000, 1000, 1)
 start_i = st.slider('start_i', 0, bmX.size, 20000, 1)
 end_i = start_i + n_part
 
-@st.cache_data
+@st.experimental_memo
 def get_part(start_i, end_i, t, bmX, bmY):
     fig, ax = plt.subplots()
     ax.plot(bmX)
@@ -165,7 +165,7 @@ def calc_polyline(coefs, a, b, res):
 
   return polyline
 
-@st.cache_data
+@st.experimental_memo
 def calc_rotation_freq(f, duration):
 
   fig, ax = plt.subplots()
@@ -304,7 +304,7 @@ def calc_trig_line(coefs, a, b, res = 100):
   return f
 
 
-order = st.slider('order', 10, 30, 1, 1)
+order = st.slider('order', 1, 30, 10, 1)
 
 coefsX = trig_approx(bmX_part, t_cutted, order)
 approxX = calc_trig_line(coefsX, 0, 2*math.pi, res)
@@ -391,9 +391,9 @@ for phiY_shift_index in range(1,amount_of_frames):
   ax.axis('equal')
   ax.set_xlim([-30, 30])
   ax.set_ylim([-30, 30])
-  fig.savefig('output/test'+f"{phiY_shift_index:03d}"+'.png', 
-              bbox_inches=Bbox([[1.5, 0.7], [5, 4.2]]),
-              dpi=300)
+  # fig.savefig('output/test'+f"{phiY_shift_index:03d}"+'.png', 
+  #             bbox_inches=Bbox([[1.5, 0.7], [5, 4.2]]),
+  #             dpi=300)
   st.pyplot(fig)
 
   st.write(phiY_shift_index)

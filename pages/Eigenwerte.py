@@ -14,7 +14,7 @@ st.title('Eigenwerte')
 
 
 
-image = Image.open(os.path.join('data', 'images', 'caterpillar1024.png'))
+image = Image.open(os.path.join('data', 'images', 'caterpillar512.png'))
 
 data = np.asarray(image)
 
@@ -30,7 +30,7 @@ n = np.shape(R)[0]
 
 
 with st.sidebar:
-    amount_of_singvalues = st.slider('Anzahl Werte', 1, n, n, 1)
+    amount_of_singvalues = st.slider('Anzahl Werte', 1, n, 15, 1)
 
 def reduce_matrix(A, amount):
     # D, P = np.linalg.eig(A)

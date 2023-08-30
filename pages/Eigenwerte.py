@@ -14,7 +14,7 @@ st.title('Eigenwerte')
 
 
 
-image = Image.open(os.path.join('data', 'images', 'caterpillar512.png'))
+image = Image.open(os.path.join('data', 'images', 'caterpillar1024.png'))
 
 data = np.asarray(image)
 
@@ -32,13 +32,14 @@ n = np.shape(R)[0]
 with st.sidebar:
     amount_of_singvalues = st.slider('Anzahl Werte', 1, n, 15, 1)
 
+@st.cache_data
 def reduce_matrix(A, amount):
     # D, P = np.linalg.eig(A)
     U, S, Vh = np.linalg.svd(A)
 
     # D_reduced = np.zeros((D.size, D.size))
     S_reduced = np.zeros((S.size, S.size))
-    for i in range(0, amount_of_singvalues):
+    for i in range(0, amount):
         # D_reduced[i][i] = D[i]
         S_reduced[i][i] = S[i]
 
@@ -50,28 +51,55 @@ def reduce_matrix(A, amount):
 
     return A_out.astype(np.uint8)
 
-R_reduced = reduce_matrix(R, amount_of_singvalues)
-fig, [ax1, ax2] = plt.subplots(1, 2)
-ax1.imshow(R)
-ax2.imshow(R_reduced)
-st.pyplot(fig)
+def lerp(A, B, p):
+    C = np.zeros(np.shape(A))
+    for i in range(0, np.shape(A)[0]):
+        for j in range(0, np.shape(A)[1]):
+            C[i][j] = A[i][j] * (1-p) + B[i][j] * p
+    
+    return C.astype(np.uint8)
 
-G_reduced = reduce_matrix(G, amount_of_singvalues)
-fig, [ax1, ax2] = plt.subplots(1, 2)
-ax1.imshow(G)
-ax2.imshow(G_reduced)
-st.pyplot(fig)
+p = st.slider('Fade', 0.0, 1.0, 0.5)
 
-B_reduced = reduce_matrix(B, amount_of_singvalues)
-fig, [ax1, ax2] = plt.subplots(1, 2)
-ax1.imshow(B)
-ax2.imshow(B_reduced)
-st.pyplot(fig)
+t = st.slider('t', 0.0, 1.0, 0.0, 0.01)
 
-output = np.dstack((R_reduced,G_reduced,B_reduced))
-image_output = Image.fromarray(output)
-st.image(image_output)
+n = 200
+for count in range(0, n):
 
-original = np.dstack((R,G,B))
-image_original = Image.fromarray(original)
-st.image(image_original)
+    st.subheader(count)
+
+    t = count/n
+    amount = t*t*t * 200 +1
+    amount_prev = math.floor(amount)
+    amount_next = math.ceil(amount)
+    p = amount - amount_prev
+
+    st.write(amount_prev, p, amount_next)
+
+    R_reduced = lerp(reduce_matrix(R, amount_prev), reduce_matrix(R, amount_next), p)
+    # fig, [ax1, ax2] = plt.subplots(1, 2)
+    # ax1.imshow(R)
+    # ax2.imshow(R_reduced)
+    # st.pyplot(fig)
+
+    G_reduced = lerp(reduce_matrix(G, amount_prev), reduce_matrix(G, amount_next), p)
+    # fig, [ax1, ax2] = plt.subplots(1, 2)
+    # ax1.imshow(G)
+    # ax2.imshow(G_reduced)
+    # st.pyplot(fig)
+
+    B_reduced = lerp(reduce_matrix(B, amount_prev), reduce_matrix(B, amount_next), p)
+    # fig, [ax1, ax2] = plt.subplots(1, 2)
+    # ax1.imshow(B)
+    # ax2.imshow(B_reduced)
+    # st.pyplot(fig)
+
+    output = np.dstack((R_reduced,G_reduced,B_reduced))
+    image_output = Image.fromarray(output)
+    st.image(image_output)
+
+    # original = np.dstack((R,G,B))
+    # image_original = Image.fromarray(original)
+    # st.image(image_original)
+
+    image_output.save('output/test'+f"{count:03d}"+'.png')

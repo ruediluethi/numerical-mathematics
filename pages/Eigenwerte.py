@@ -14,7 +14,7 @@ st.title('Eigenwerte')
 
 
 
-image = Image.open(os.path.join('data', 'images', 'caterpillar1024.png'))
+image = Image.open(os.path.join('data', 'images', 'butterfly1024.png'))
 
 data = np.asarray(image)
 
@@ -22,9 +22,9 @@ R = data[:,:,0]
 G = data[:,:,1]
 B = data[:,:,2]
 
-# R = np.tril(R) + np.tril(R).T - np.diag(np.diagonal(R))
-# G = np.tril(G) + np.tril(G).T - np.diag(np.diagonal(G))
-# B = np.tril(B) + np.tril(B).T - np.diag(np.diagonal(B))
+R = np.tril(R) + np.tril(R).T - np.diag(np.diagonal(R))
+G = np.tril(G) + np.tril(G).T - np.diag(np.diagonal(G))
+B = np.tril(B) + np.tril(B).T - np.diag(np.diagonal(B))
 
 n = np.shape(R)[0]
 
@@ -34,20 +34,20 @@ with st.sidebar:
 
 @st.cache_data
 def reduce_matrix(A, amount):
-    # D, P = np.linalg.eig(A)
-    U, S, Vh = np.linalg.svd(A)
+    D, P = np.linalg.eig(A)
+    # U, S, Vh = np.linalg.svd(A)
 
-    # D_reduced = np.zeros((D.size, D.size))
-    S_reduced = np.zeros((S.size, S.size))
+    D_reduced = np.zeros((D.size, D.size))
+    # S_reduced = np.zeros((S.size, S.size))
     for i in range(0, amount):
-        # D_reduced[i][i] = D[i]
-        S_reduced[i][i] = S[i]
+        D_reduced[i][i] = D[i]
+        # S_reduced[i][i] = S[i]
 
-    # A_out = P @ D_reduced @ P.T
-    A_out = U @ S_reduced @ Vh
+    A_out = P @ D_reduced @ P.T
+    # A_out = U @ S_reduced @ Vh
 
-    A_out = np.maximum(A_out, np.zeros(S.size))
-    A_out = np.minimum(A_out, np.ones(S.size)*255)
+    A_out = np.maximum(A_out, np.zeros(D.size))
+    A_out = np.minimum(A_out, np.ones(D.size)*255)
 
     return A_out.astype(np.uint8)
 
@@ -96,7 +96,7 @@ for count in range(0, n):
 
     output = np.dstack((R_reduced,G_reduced,B_reduced))
     image_output = Image.fromarray(output)
-    st.image(image_output)
+    # st.image(image_output)
 
     # original = np.dstack((R,G,B))
     # image_original = Image.fromarray(original)

@@ -14,7 +14,7 @@ st.title('Eigenwerte')
 
 
 
-image = Image.open(os.path.join('data', 'images', 'butterfly1024.png'))
+image = Image.open(os.path.join('data', 'images', 'butterfly256.png'))
 
 data = np.asarray(image)
 
@@ -28,9 +28,8 @@ B = np.tril(B) + np.tril(B).T - np.diag(np.diagonal(B))
 
 n = np.shape(R)[0]
 
-
-with st.sidebar:
-    amount_of_singvalues = st.slider('Anzahl Werte', 1, n, 15, 1)
+colored_image = st.container()
+amount = st.slider('Anzahl Werte', 1, n, 15, 1)
 
 @st.cache_data
 def reduce_matrix(A, amount):
@@ -59,47 +58,55 @@ def lerp(A, B, p):
     
     return C.astype(np.uint8)
 
-p = st.slider('Fade', 0.0, 1.0, 0.5)
 
-t = st.slider('t', 0.0, 1.0, 0.0, 0.01)
 
-n = 200
-for count in range(0, n):
+# p = st.slider('Fade', 0.0, 1.0, 0.5)
+# t = st.slider('t', 0.0, 1.0, 0.0, 0.01)
+# n = 200
+# for count in range(0, n):
 
-    st.subheader(count)
+# st.subheader(count)
 
-    t = count/n
-    amount = t*t*t * 200 +1
-    amount_prev = math.floor(amount)
-    amount_next = math.ceil(amount)
-    p = amount - amount_prev
+# t = count/n
+# amount = t*t*t * 200 +1
+amount_prev = math.floor(amount)
+amount_next = math.ceil(amount)
+p = amount - amount_prev
 
-    st.write(amount_prev, p, amount_next)
+# st.write(amount_prev, p, amount_next)
+fig, axs = plt.subplots(3, 2)
 
-    R_reduced = lerp(reduce_matrix(R, amount_prev), reduce_matrix(R, amount_next), p)
-    # fig, [ax1, ax2] = plt.subplots(1, 2)
-    # ax1.imshow(R)
-    # ax2.imshow(R_reduced)
-    # st.pyplot(fig)
 
-    G_reduced = lerp(reduce_matrix(G, amount_prev), reduce_matrix(G, amount_next), p)
-    # fig, [ax1, ax2] = plt.subplots(1, 2)
-    # ax1.imshow(G)
-    # ax2.imshow(G_reduced)
-    # st.pyplot(fig)
 
-    B_reduced = lerp(reduce_matrix(B, amount_prev), reduce_matrix(B, amount_next), p)
-    # fig, [ax1, ax2] = plt.subplots(1, 2)
-    # ax1.imshow(B)
-    # ax2.imshow(B_reduced)
-    # st.pyplot(fig)
+R_reduced = lerp(reduce_matrix(R, amount_prev), reduce_matrix(R, amount_next), p)
+axs[0][0].imshow(R, cmap='Greys')
+axs[0][0].axis('off')
+axs[0][1].imshow(R_reduced, cmap='Greys')
+axs[0][1].axis('off')
 
-    output = np.dstack((R_reduced,G_reduced,B_reduced))
-    image_output = Image.fromarray(output)
-    # st.image(image_output)
+G_reduced = lerp(reduce_matrix(G, amount_prev), reduce_matrix(G, amount_next), p)
+axs[1][0].imshow(G, cmap='Greys')
+axs[1][0].axis('off')
+axs[1][1].imshow(G_reduced, cmap='Greys')
+axs[1][1].axis('off')
 
-    # original = np.dstack((R,G,B))
-    # image_original = Image.fromarray(original)
-    # st.image(image_original)
+B_reduced = lerp(reduce_matrix(B, amount_prev), reduce_matrix(B, amount_next), p)
+axs[2][0].imshow(B, cmap='Greys')
+axs[2][0].axis('off')
+axs[2][1].imshow(B_reduced, cmap='Greys')
+axs[2][1].axis('off')
 
-    image_output.save('output/test'+f"{count:03d}"+'.png')
+st.pyplot(fig)
+
+col1, col2 = colored_image.columns(2)
+
+original = np.dstack((R,G,B))
+image_original = Image.fromarray(original)
+col1.image(image_original)
+
+
+output = np.dstack((R_reduced,G_reduced,B_reduced))
+image_output = Image.fromarray(output)
+col2.image(image_output)
+
+# image_output.save('output/test'+f"{count:03d}"+'.png')

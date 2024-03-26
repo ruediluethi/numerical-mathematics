@@ -5,8 +5,7 @@ import pandas as pd
 import math
 import matplotlib.pyplot as plt
 
-from lib.dft import discrete_fourier_transformation, hamming_window
-from lib.poly import polynomial_interpolation, calc_polyline
+from funlib.dft import discrete_fourier_transformation, hamming_window
 
 def simple_low_pass(f, alpha):
     f_filtered = np.zeros(f.size)
@@ -190,7 +189,7 @@ show_range = st.slider(
     'Welcher Teil der Messung soll für die Analyse genutzt werden?',
     0.0, 1.0, (0.0, 1.0))
 
-@st.experimental_memo
+@st.cache_data
 def anylze_all(dir_list, dir_range):
     blocks_count = np.zeros(dir_range)
     for i in range(0, dir_range):

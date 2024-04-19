@@ -4,17 +4,18 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 
-from scipy import optimize
+# from scipy import optimize
 from PIL import Image
 
 import matplotlib.pyplot as plt
 
-st.title('Eigenwerte')
+st.title('Singulärwertzerlegung von Bildern')
 
 
 
 
-image = Image.open(os.path.join('data', 'images', 'butterfly256.png'))
+# image = Image.open(os.path.join('data', 'images', 'butterfly256.png'))
+image = Image.open(os.path.join('data', 'images', 'caterpillar256.png'))
 
 data = np.asarray(image)
 
@@ -22,9 +23,9 @@ R = data[:,:,0]
 G = data[:,:,1]
 B = data[:,:,2]
 
-R = np.tril(R) + np.tril(R).T - np.diag(np.diagonal(R))
-G = np.tril(G) + np.tril(G).T - np.diag(np.diagonal(G))
-B = np.tril(B) + np.tril(B).T - np.diag(np.diagonal(B))
+# R = np.tril(R) + np.tril(R).T - np.diag(np.diagonal(R))
+# G = np.tril(G) + np.tril(G).T - np.diag(np.diagonal(G))
+# B = np.tril(B) + np.tril(B).T - np.diag(np.diagonal(B))
 
 n = np.shape(R)[0]
 
@@ -33,20 +34,20 @@ amount = st.slider('Anzahl Werte', 1, n, 15, 1)
 
 @st.cache_data
 def reduce_matrix(A, amount):
-    D, P = np.linalg.eig(A)
-    # U, S, Vh = np.linalg.svd(A)
+    # D, P = np.linalg.eig(A)
+    U, S, Vh = np.linalg.svd(A)
 
-    D_reduced = np.zeros((D.size, D.size))
-    # S_reduced = np.zeros((S.size, S.size))
+    # D_reduced = np.zeros((D.size, D.size))
+    S_reduced = np.zeros((S.size, S.size))
     for i in range(0, amount):
-        D_reduced[i][i] = D[i]
-        # S_reduced[i][i] = S[i]
+        # D_reduced[i][i] = D[i]
+        S_reduced[i][i] = S[i]
 
-    A_out = P @ D_reduced @ P.T
-    # A_out = U @ S_reduced @ Vh
+    # A_out = P @ D_reduced @ P.T
+    A_out = U @ S_reduced @ Vh
 
-    A_out = np.maximum(A_out, np.zeros(D.size))
-    A_out = np.minimum(A_out, np.ones(D.size)*255)
+    A_out = np.maximum(A_out, np.zeros(S.size))
+    A_out = np.minimum(A_out, np.ones(S.size)*255)
 
     return A_out.astype(np.uint8)
 

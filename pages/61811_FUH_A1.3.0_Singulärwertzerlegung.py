@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import matplotlib.pyplot as plt
 
 # A = np.array([[7/5, 1/5], [-1, 1/2]])
 # st.write(A)
@@ -12,8 +13,21 @@ import numpy as np
 # eig_values, eig_vector = np.linalg.eig(A)
 # st.write(eig_values, eig_vector)
 
+st.title('Singulärwertzerlegung')
 
-st.subheader('(a)')
+st.header('Anwendung: Matrixapproximation')
+
+X = np.array([[-2.18, 1.92, 5.72, -11.28, 4.62, -0.38, 2.82, -4.78, 3.42,  0.12],
+              [-1.19, 3.31, 2.41,  -4.49, 2.61,  0.51, 5.91, -4.79, 0.91, -5.19]])
+
+st.write(r'''
+    Sei $X$ eine Matrix, welche die Datenpunkte $x_i$ in den Spalten enthält:
+''')
+st.write(X)
+
+
+
+st.subheader('Optimierungsproblem')
 st.write(r'''
     Sei $\tilde{x}_i$ die Projektion von $x_i$ auf $z$:
 ''')
@@ -50,7 +64,7 @@ st.latex(r'''
     = \arg \max_{\Vert z \Vert = 1} \sum_{i=1}^{10} \left< x_i, z \right>^2
 ''')
 
-st.subheader('(b)')
+st.subheader('Matrixnorm')
 st.write(r'''
     Wenn $X$ zeilenweise die Datenpunkte $x_i$ enthält, so gilt
 ''')
@@ -88,7 +102,7 @@ st.write(r'''
     Sei $\sigma$ der größte Singulärwert von $X$, so gilt nach Definition $\Vert X \Vert = \sigma \Rightarrow \Vert X \Vert^2 = \sigma^2$.
 ''')
 
-st.subheader('(c)')
+st.subheader('Lösung durch Singulärwertzerlegung')
 st.write(r'''
     Sei $X = U \Sigma V^\intercal$ die Singulärwertzerlegung von $X$ und $v_1$ die erste Spalte von $V$.
     Da $V$ eine orthonormale Matrix ist, gilt für $v_1^\intercal v_1 = 1$ und $v_1^\intercal v_i = 0$ für $i \neq 1$ und damit
@@ -126,13 +140,24 @@ st.latex(r'''
 
 st.header('Singulärwertzerlegung')
 
-A = np.array([[5, 3], [4, 1], [1, 4]])
-st.write(A)
+st.write(r'''
+    Gesucht ist eine Zerlegung der Matrix $A \in \mathbb{R}^{m \times n}$ in die Matrizen 
+    $U \in \mathbb{R}^{m \times m}, \Sigma \in \mathbb{R}^{m \times n}, V \in \mathbb{R}^{n \times n}$
+    sodass $A = U \Sigma V^\intercal$ gilt.
+''')
+
+# A = np.array([[5, 3], [4, 1], [1, 4]])
+A = X.T
+m = A.shape[0]
+n = A.shape[1]
 
 ATA = A.T @ A
-st.write(ATA)
+# st.write(ATA)
 
-st.subheader('Eigenwerte')
+st.subheader('Berechnen der Eigenwerte')
+st.write(r'''
+    Der symmetrisch positiv definiten Matrix $A^\intercal A$.
+''')
 st.latex(r'''
     P(\lambda) = \det \left( A^\intercal A - \lambda I \right)
     = \det \left( \begin{array}{cc}
@@ -150,9 +175,12 @@ c = - ATA[0,1] * ATA[1,0] + ATA[0,0] * ATA[1,1]
 lambda_1 = ((ATA[0,0] + ATA[1,1]) + np.sqrt((ATA[0,0] + ATA[1,1])**2 + 4 * ATA[0,1]*ATA[1,0] - 4*ATA[0,0]*ATA[1,1]) )/2
 lambda_2 = ((ATA[0,0] + ATA[1,1]) - np.sqrt((ATA[0,0] + ATA[1,1])**2 + 4 * ATA[0,1]*ATA[1,0] - 4*ATA[0,0]*ATA[1,1]) )/2
 
-st.write(lambda_1, lambda_2)
+st.write(r'$\lambda_1 = $'+str(round(lambda_1, 3)))
+st.write(r'$\lambda_2 = $'+str(round(lambda_2, 3)))
 
-st.subheader('Eigenvektor')
+# st.write(lambda_1, lambda_2)
+
+st.subheader('Berechnen der Eigenvektoren')
 st.latex(r'''
     \left( A^\intercal A - \lambda I \right) v \stackrel{!}{=} 0 \\
     \Rightarrow \quad \left( \begin{array}{cccc}
@@ -180,34 +208,88 @@ V = np.zeros((2,2))
 V[:,0] = v_1.flatten()
 V[:,1] = v_2.flatten()
 
-
-
 D = np.zeros((2,2))
 D[0,0] = lambda_1
 D[1,1] = lambda_2
 
-st.write(D, V)
-st.write(V.T @ D @ V)
+# st.write(D, V)
+# st.write(V.T @ D @ V)
+
+Sigma = np.zeros((m,n))
+Sigma[0,0] = np.sqrt(lambda_1)
+Sigma[1,1] = np.sqrt(lambda_2)
 
 # U, S, Vh = np.linalg.svd(A)
 # st.write(U, S, Vh)
 
-u_1 = 1/np.sqrt(lambda_1) * A @ v_1
-u_2 = 1/np.sqrt(lambda_2) * A @ v_2
-e_3 = np.array([0,0,1]).reshape(3,1)
-u_3 = e_3 - u_1.T @ e_3 * u_1 - u_2.T @ e_3 * u_2
-st.write(u_3)
-u_3 = u_3/np.linalg.norm(u_3)
-U = np.zeros((3,3))
-U[:,0] = u_1.flatten()
-U[:,1] = u_2.flatten()
-U[:,2] = u_3.flatten()
-st.write(U)
+st.subheader(r'Berechnen der Matrix $U$')
 
-Sigma = np.zeros((3,2))
-Sigma[0,0] = np.sqrt(lambda_1)
-Sigma[1,1] = np.sqrt(lambda_2)
 
-st.write(Sigma)
+st.write(r'''
+    Für die Spalten $u_i$ mit $i = 1, ..., n$ von $U$ gilt
+''')
+st.latex(r'''
+    u_i = \frac{A v_i}{\Vert A v_i \Vert} 
+    = \frac{A v_i}{\sqrt{ v_i^\intercal A^\intercal A v_i }}
+    = \frac{A v_i}{\sqrt{ v_i^\intercal \lambda v_i }} 
+    = \frac{A v_i}{\sqrt{ \lambda } \underbrace{\Vert v_i \Vert}_{=1}} 
+    = \frac{1}{\sqrt{\lambda_i}} A v_i
+''')
 
-st.write(U @ Sigma @ V.T)
+st.write(r'''
+    Die Spalten $u_k$ mit $k = {n+1}, ..., m$ werden mittels der Einheitsvektoren $e_{n+1}, ..., e_m$ und dem Gramm-Schmidt-Verfahren ergänzt.
+    Sei $\tilde{u}_k$ eine Linarkombination aus den bisherigen Spalten $u_1, ..., u_{k-1}$ und $e_k$
+''')
+st.latex(r'''
+    \tilde{u}_k = e_k + \sum_{j=1}^{k-1} \alpha_j u_j
+''')
+st.write(r'''
+    Wobei die neue Spalte $\tilde{u}_k$ orthogonal zu den bisherigen Spalten $u_1, ..., u_{k-1}$ sein muss.
+''')
+st.latex(r'''
+    \forall i \in \{1, ..., k-1\}: \quad \left< u_i, \tilde{u}_k \right> 
+    = \left< u_i, e_k + \sum_{j=1}^{k-1} \alpha_j u_j \right>
+    = \left< u_i, e_k \right> + \underbrace{\sum_{j=1}^{k-1} \alpha_j \left< u_i, u_j \right>}_{\substack{i=j \Rightarrow 1 \\ i \neq j \Rightarrow 0}} = 0 \\
+    \Leftrightarrow \quad \alpha_i = - \left< u_i, e_k \right>
+''')
+
+
+
+U = np.zeros((m,m))
+for i in range(0,n):
+    U[:,i] = 1/np.sqrt(D[i,i]) * A @ V[:,i]
+
+# st.write(U)
+
+for k in range(n,m):
+    e_k = np.zeros(m)
+    e_k[k] = 1
+    u_k_ = e_k
+    for j in range(0,k):
+        u_k_ = u_k_ - U[:,j].T @ e_k * U[:,j]
+      
+    U[:,k] = u_k_/np.linalg.norm(u_k_)
+
+# st.write(U)
+
+
+# st.write(Sigma)
+
+# st.write(X)
+# st.write((U @ Sigma @ V.T).T)
+
+# st.write(X)
+
+# st.write(np.sqrt(X[0,0]**2 + X[1,0]**2))
+
+max_scale = np.amax((np.sqrt(X[0,:]**2 + X[1,:]**2)))
+
+fig, ax = plt.subplots()
+ax.plot(X[0,:], X[1,:], 'k.')
+ax.plot(np.array([-V[0,0], V[0,0]])*max_scale, 
+        np.array([-V[1,0], V[1,0]])*max_scale, 'k')
+ax.plot(np.array([-V[0,1], V[0,1]])*max_scale, 
+        np.array([-V[1,1], V[1,1]])*max_scale, 'k:', alpha=0.3)
+ax.set_aspect('equal')
+ax.grid(True, which='both')
+st.pyplot(fig)

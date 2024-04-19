@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 
-from pages.Lineare_Gleichungssysteme import QR_solver
+# from pages.Lineare_Gleichungssysteme import QR_solver
 
 n = int(10)
 

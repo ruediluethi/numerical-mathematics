@@ -124,3 +124,90 @@ st.latex(r'''
     = \underbrace{\Vert u_1 \Vert^2}_{=1} \sigma_1^2 = \sigma_1^2
 ''')
 
+st.header('Singulärwertzerlegung')
+
+A = np.array([[5, 3], [4, 1], [1, 4]])
+st.write(A)
+
+ATA = A.T @ A
+st.write(ATA)
+
+st.subheader('Eigenwerte')
+st.latex(r'''
+    P(\lambda) = \det \left( A^\intercal A - \lambda I \right)
+    = \det \left( \begin{array}{cc}
+        a_{11} - \lambda & a_{12} \\
+        a_{21} & a_{22} - \lambda \\
+    \end{array} \right) \\
+    = \left( a_{11} - \lambda \right)\left( a_{22} - \lambda \right) - a_{12} a_{21}
+    = \lambda^2 - \lambda \left( a_{11} + a_{22} \right) - a_{12} a_{21} + a_{11} a_{22} \\
+    \Rightarrow \quad \lambda_{1,2} = \frac{\left( a_{11} + a_{22} \right) \pm \sqrt{\left( a_{11} + a_{22} \right)^2 + 4 a_{12} a_{21} - 4a_{11} a_{22} }}{2}
+''')
+
+a = 1
+b = -(ATA[0,0] + ATA[1,1])
+c = - ATA[0,1] * ATA[1,0] + ATA[0,0] * ATA[1,1]
+lambda_1 = ((ATA[0,0] + ATA[1,1]) + np.sqrt((ATA[0,0] + ATA[1,1])**2 + 4 * ATA[0,1]*ATA[1,0] - 4*ATA[0,0]*ATA[1,1]) )/2
+lambda_2 = ((ATA[0,0] + ATA[1,1]) - np.sqrt((ATA[0,0] + ATA[1,1])**2 + 4 * ATA[0,1]*ATA[1,0] - 4*ATA[0,0]*ATA[1,1]) )/2
+
+st.write(lambda_1, lambda_2)
+
+st.subheader('Eigenvektor')
+st.latex(r'''
+    \left( A^\intercal A - \lambda I \right) v \stackrel{!}{=} 0 \\
+    \Rightarrow \quad \left( \begin{array}{cccc}
+        a_{11} - \lambda & a_{12} & | & 0 \\
+        a_{21} & a_{22} - \lambda & | & 0
+    \end{array} \right) \\
+    \Rightarrow \quad \left( \begin{array}{cccc}
+        a_{11} - \lambda & a_{12} & | & 0 \\
+        a_{21} - \frac{a_{21}}{a_{11} - \lambda} (a_{11} - \lambda) & 
+        a_{22} - \lambda - \frac{a_{21}}{a_{11} - \lambda} a_{12} & | & 0
+    \end{array} \right) \\
+''')
+
+A_1 = ATA - np.eye(2) * lambda_1
+A_1[1,:] = A_1[1,:] - A_1[1,0]/A_1[0,0] * A_1[0,:]
+v_1 = np.array([[-A_1[0,1]/A_1[0,0]],[1]])
+v_1 = v_1/np.linalg.norm(v_1)
+
+A_2 = ATA - np.eye(2) * lambda_2
+A_2[1,:] = A_2[1,:] - A_2[1,0]/A_2[0,0] * A_2[0,:]
+v_2 = np.array([[1],[-A_2[0,0]/A_2[0,1]]])
+v_2 = v_2/np.linalg.norm(v_2)
+
+V = np.zeros((2,2))
+V[:,0] = v_1.flatten()
+V[:,1] = v_2.flatten()
+
+
+
+D = np.zeros((2,2))
+D[0,0] = lambda_1
+D[1,1] = lambda_2
+
+st.write(D, V)
+st.write(V.T @ D @ V)
+
+# U, S, Vh = np.linalg.svd(A)
+# st.write(U, S, Vh)
+
+u_1 = 1/np.sqrt(lambda_1) * A @ v_1
+u_2 = 1/np.sqrt(lambda_2) * A @ v_2
+e_3 = np.array([0,0,1]).reshape(3,1)
+u_3 = e_3 - u_1.T @ e_3 * u_1 - u_2.T @ e_3 * u_2
+st.write(u_3)
+u_3 = u_3/np.linalg.norm(u_3)
+U = np.zeros((3,3))
+U[:,0] = u_1.flatten()
+U[:,1] = u_2.flatten()
+U[:,2] = u_3.flatten()
+st.write(U)
+
+Sigma = np.zeros((3,2))
+Sigma[0,0] = np.sqrt(lambda_1)
+Sigma[1,1] = np.sqrt(lambda_2)
+
+st.write(Sigma)
+
+st.write(U @ Sigma @ V.T)

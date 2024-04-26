@@ -20,6 +20,7 @@ st.header('Anwendung: Matrixapproximation')
 X = np.array([[-2.18, 1.92, 5.72, -11.28, 4.62, -0.38, 2.82, -4.78, 3.42,  0.12],
               [-1.19, 3.31, 2.41,  -4.49, 2.61,  0.51, 5.91, -4.79, 0.91, -5.19]])
 
+
 st.write(r'''
     Sei $X$ eine Matrix, welche die Datenpunkte $x_i$ in den Spalten enthält:
 ''')
@@ -284,12 +285,22 @@ for k in range(n,m):
 
 max_scale = np.amax((np.sqrt(X[0,:]**2 + X[1,:]**2)))
 
+normed_Sigma = Sigma / np.amax(Sigma)
+
+res = 100
+phi = np.linspace(0, 2*np.pi, res)
+circle = np.zeros((2, res))
+circle[0,:] = np.cos(phi)
+circle[1,:] = np.sin(phi)
+oval = (V @ normed_Sigma[0:2,0:2] @ V.T) @ circle * max_scale
+
 fig, ax = plt.subplots()
 ax.plot(X[0,:], X[1,:], 'k.')
-ax.plot(np.array([-V[0,0], V[0,0]])*max_scale, 
-        np.array([-V[1,0], V[1,0]])*max_scale, 'k')
-ax.plot(np.array([-V[0,1], V[0,1]])*max_scale, 
-        np.array([-V[1,1], V[1,1]])*max_scale, 'k:', alpha=0.3)
+ax.plot(np.array([-V[0,0], V[0,0]])*normed_Sigma[0,0]*max_scale, 
+        np.array([-V[1,0], V[1,0]])*normed_Sigma[0,0]*max_scale, 'k')
+ax.plot(np.array([-V[0,1], V[0,1]])*normed_Sigma[1,1]*max_scale, 
+        np.array([-V[1,1], V[1,1]])*normed_Sigma[1,1]*max_scale, 'k--')
+ax.plot(oval[0,:], oval[1,:], 'k:', alpha=0.3)
 ax.set_aspect('equal')
 ax.grid(True, which='both')
 st.pyplot(fig)

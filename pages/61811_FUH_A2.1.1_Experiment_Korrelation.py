@@ -81,16 +81,18 @@ st.latex(r'''
   {\sqrt{\text{Var}(X)} \sqrt{\text{Var}(Y)}} = r
 ''')
 
-df = pd.read_csv('./data/korrelation_example.csv')
+# df = pd.read_csv('./data/korrelation_example.csv')
 # st.write(df)
 
 
 
 
-x = df['impulse'].values
-y = df['x1'].values
+# x = df['impulse'].values
+# y = df['x1'].values
 
-example = st.radio('Example', ['Kraftimpuls (X) VS Werkzeugverschleiß (Y)', 'Gleichverteilte Zufallszahlen'], horizontal=True)
+# example = st.radio('Example', ['Kraftimpuls (X) VS Werkzeugverschleiß (Y)', 'Gleichverteilte Zufallszahlen'], horizontal=True)
+
+example = 'Gleichverteilte Zufallszahlen'
 
 if example == 'Gleichverteilte Zufallszahlen':
   spread = st.slider('spread', 0.0, 1.0, 0.5)

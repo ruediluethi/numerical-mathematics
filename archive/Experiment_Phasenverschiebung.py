@@ -321,6 +321,7 @@ ax.plot(roundabout, approxX)
 ax.plot(roundabout, approxY)
 st.pyplot(fig)
 
+exit()
 
 phiX_shift = st.slider('x shift', -math.pi, math.pi, 0.0, 0.01)
 amount_of_frames = 25*10

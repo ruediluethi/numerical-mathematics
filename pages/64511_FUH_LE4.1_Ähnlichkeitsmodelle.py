@@ -42,7 +42,7 @@ for file in os.listdir(photoset_path):
     n_bins = 100
 
     fig, ax = plt.subplots()
-    H_hist, H_bins = np.histogram(H, bins=n_bins)
+    H_hist, H_bins = np.histogram(H, bins=n_bins, density=True, weights=S*V)
     for k in range(n_bins):
         r, g, b = colorsys.hsv_to_rgb(H_bins[k+1], 1.0, 1.0)
         ax.bar(H_bins[k+1], H_hist[k], width=np.abs(np.amax(H_bins) - np.amin(H_bins))/n_bins, color=(r, g, b))
@@ -52,12 +52,12 @@ for file in os.listdir(photoset_path):
 
 
     n_cols = 12
-    peaks, props = find_peaks(H_hist, prominence=np.amax(H_hist)*0.1, distance=n_bins/n_cols, width=int(n_bins*0.02))
+    peaks, props = find_peaks(H_hist, prominence=np.amax(H_hist)*0.1, distance=n_bins/n_cols/2, width=int(n_bins*0.01))
     ax.plot(H_bins[peaks+1], H_hist[peaks], 'x')
 
 
     #col_names = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta']
-    col_names = ['red', 'orange', 'yellow', 'lime', 'green', 'blue-green', 'cyan', 'azure', 'blue', 'purple', 'magenta', 'pink']
+    col_names = ['red', 'orange', 'yellow', 'lime', 'green', 'turquoise', 'cyan', 'azure', 'blue', 'purple', 'magenta', 'pink']
     col_borders = np.linspace(-1.0/n_cols/2, 1.0 + 1.0/n_cols/2, n_cols+2)
     for k, c in enumerate(col_borders):
         ax.plot([c, c], [0, np.amax(H_hist)], 'k-')

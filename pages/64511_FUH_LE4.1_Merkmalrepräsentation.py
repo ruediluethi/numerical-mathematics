@@ -42,6 +42,8 @@ for file in os.listdir(photoset_path):
 
 n_bins = 100
 feature_data_path = os.path.join(photoset_path, 'features')
+if not os.path.exists(feature_data_path):
+    os.makedirs(feature_data_path)
 histogram_data_path = os.path.join(feature_data_path, 'histogram_data.numpy')
 save_hist_data = True
 if os.path.isfile(histogram_data_path):

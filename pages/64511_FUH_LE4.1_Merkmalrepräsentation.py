@@ -17,17 +17,20 @@ COLOR_WHEEL_NAMES = ['Rot', 'Orange', 'Gelb', 'Limette', 'Grün', 'Türkis', 'Cy
 st.title('Merkmalextraktion und Repräsentation')
 
 photoset_path = os.path.join('data', 'photoset')
-thumb_progress = st.progress(0.0, 'create thumbnails from raw ...')
-raw_files = os.listdir(os.path.join(photoset_path, 'raw'))
-for i, file in enumerate(raw_files):
-    thumb_progress.progress(i/len(raw_files), 'create thumbnails from raw ...')
-    #thumb_path = os.path.join(photoset_path, f'{os.path.splitext(os.path.basename(file))[0]}.png')
-    thumb_path = os.path.join(photoset_path, f'{str(i+1).zfill(2)}.png')
-    if not os.path.isfile(thumb_path):
-        img = Image.open(os.path.join(photoset_path, 'raw', file))
-        thumb = img.resize((512, 512))
-        thumb.save(thumb_path)
-thumb_progress.empty()
+
+raw_path = os.path.join(photoset_path, 'raw')
+if os.path.isdir(raw_path):
+    thumb_progress = st.progress(0.0, 'create thumbnails from raw ...')
+    raw_files = os.listdir(raw_path)
+    for i, file in enumerate(raw_files):
+        thumb_progress.progress(i/len(raw_files), 'create thumbnails from raw ...')
+        #thumb_path = os.path.join(photoset_path, f'{os.path.splitext(os.path.basename(file))[0]}.png')
+        thumb_path = os.path.join(photoset_path, f'{str(i+1).zfill(2)}.png')
+        if not os.path.isfile(thumb_path):
+            img = Image.open(os.path.join(photoset_path, 'raw', file))
+            thumb = img.resize((512, 512))
+            thumb.save(thumb_path)
+    thumb_progress.empty()
 
 img_files_list = []
 for file in os.listdir(photoset_path):

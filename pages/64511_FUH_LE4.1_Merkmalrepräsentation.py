@@ -71,6 +71,8 @@ for i_file, img_path in enumerate(img_files_list):
     H = np.zeros(n)
     S = np.zeros(n)
     V = np.zeros(n)
+    L = np.zeros(n)
+    w = np.zeros(n)
 
     fig = plt.figure(figsize=(12, 4))
     gs = fig.add_gridspec(2,3)
@@ -82,19 +84,20 @@ for i_file, img_path in enumerate(img_files_list):
     ax_img.set_title('Datenobjekt')    
 
     for i in range(n):
-        H[i], S[i], V[i] = colorsys.rgb_to_hsv(R[i], G[i], B[i])
-        w = S[i]*(V[i]/255)
-        if i%200 == 0:
-            ax_px.plot(H[i], w, '.', color=(R[i]/255, G[i]/255, B[i]/255))
+        #H[i], S[i], V[i] = colorsys.rgb_to_hsv(R[i], G[i], B[i])
+        #w = S[i]*(V[i]/255)
+        H[i], L[i], S[i] = colorsys.rgb_to_hls(R[i]/255, G[i]/255, B[i]/255)
+        w[i] = L[i]*S[i]
+        if i%1000 == 0:
+            ax_px.plot(H[i], w[i], '.', color=(R[i]/255, G[i]/255, B[i]/255))
+
     ax_px.set_xlim([0.0, 1.0])
     ax_px.set_title('Merkmalsraum')
     # st.pyplot(fig)
 
-    V = V/255 # no idea why
-
 
     # fig, ax = plt.subplots()
-    H_hist, H_bins = np.histogram(H, bins=n_bins, density=True, weights=S*V)
+    H_hist, H_bins = np.histogram(H, bins=n_bins, density=True, weights=w)
     if save_hist_data:
         histogram_data[i_file,:] = H_hist
     for k in range(n_bins):
@@ -104,6 +107,7 @@ for i_file, img_path in enumerate(img_files_list):
     #     r, g, b = colorsys.hsv_to_rgb(H_bins[k+1], 1.0, 1.0)
     #     ax.bar(H_bins[k+1]+1, H_hist[k], width=np.abs(np.amax(H_bins) - np.amin(H_bins))/n_bins, color=(r, g, b), alpha=0.5)
 
+    st.write(np.sum(H_hist)) # this will be always around 100.0
 
     n_cols = len(COLOR_WHEEL_NAMES)
     peaks, props = find_peaks(H_hist, prominence=np.amax(H_hist)*0.1, distance=n_bins/n_cols/2, width=int(n_bins*0.01))

@@ -28,7 +28,7 @@ COLOR_WHEEL_NAMES = ['Rot', 'Orange', 'Gelb', 'Limette', 'Grün', 'Türkis', 'Cy
 st.title('Merkmalextraktion und Repräsentation')
 st.write('Für die Merkmalsextraktion wurde Pixel für Pixel vom RGB Farbraum in den HSL (Hue, Saturation, Lightness) Farbraum transformiert. Damit kann ein Histogramm über den Farbwert (H) bestimmt werden, welches auch als Merkmalrepräsentation gespeichert wird. Dabei wird die Sättigung (S) und die Helligkeit (L) als Gewichtung w genutzt, um möglichst dominante Farben zu erkennen. Denn eine Farbe darf nicht zu dunkel (L=0) und nicht zu hell (L=1) sein, sowie eine möglichst hohe Sättigung S aufweisen. Deshalb wird die folgende Funktion zur Bestimmung der Gewichtung w verwendet:')
 st.latex(r'''
-    \left( \frac{1}{2} \sin(2 \pi L - \frac{\pi}{2}) + \frac{1}{2} \right) \cdot L \cdot S^2
+    w(S, L) = \left( \frac{1}{2} \sin(2 \pi L - \frac{\pi}{2}) + \frac{1}{2} \right) \cdot L \cdot S^2
 ''')
 
 photoset_path = os.path.join('data', 'photoset')
@@ -127,35 +127,13 @@ for i_file, img_path in enumerate(img_files_list):
     for k in range(n_bins):
         r, g, b = colorsys.hls_to_rgb(H_bins[k+1], 0.5, 1.0)
         ax_hist.bar(H_bins[k+1], H_hist[k], width=np.abs(np.amax(H_bins) - np.amin(H_bins))/n_bins, color=(r, g, b))
-    # for k in range(int(n_bins*0.2)):
-    #     r, g, b = colorsys.hsv_to_rgb(H_bins[k+1], 1.0, 1.0)
-    #     ax.bar(H_bins[k+1]+1, H_hist[k], width=np.abs(np.amax(H_bins) - np.amin(H_bins))/n_bins, color=(r, g, b), alpha=0.5)
-
-    #st.write(np.sum(H_hist)) # this will be always around 100.0
-
-    n_cols = len(COLOR_WHEEL_NAMES)
-    peaks, props = find_peaks(H_hist, distance=n_bins/n_cols, prominence=np.amax(H_hist)*0.01)#, width=int(n_bins*0.01))
-    ax_hist.plot(H_bins[peaks+1], H_hist[peaks], 'kx', markersize=10)
-
-    col_borders = np.linspace(-1.0/n_cols/2, 1.0 + 1.0/n_cols/2, n_cols+2)
-    col_names = []
-    for k, c in enumerate(col_borders):
-        if 0 < k and k <= n_cols:
-            ax_hist.plot([c, c], [0, np.amax(H_hist)], 'k-')
-        if k > 0:
-            for p in peaks:
-                if col_borders[k-1] < H_bins[p+1] and H_bins[p+1] <= c:
-                    col_names.append(COLOR_WHEEL_NAMES[(k-1)%n_cols])
-
+    
     ax_hist.set_xlim([0.0, 1.0])
     ax_hist.set_title('Histogramm')
 
     fig.tight_layout()
     st.pyplot(fig)
-    st.caption(f'''
-        Beispielbild mit transformierten Pixeln und dazugehörigen gewichteten Histogramm.\n
-        Merkmalsignatur: {", ".join(col_names)}
-    ''')
+    st.caption('Beispielbild mit transformierten Pixeln und dazugehörigen gewichteten Histogramm.')
 
 calc_hist_progress.empty()
 if save_hist_data:

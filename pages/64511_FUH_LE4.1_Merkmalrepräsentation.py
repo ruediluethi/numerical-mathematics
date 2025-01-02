@@ -1,8 +1,6 @@
-import math
 import os
 import streamlit as st
 import numpy as np
-import pandas as pd
 
 from PIL import Image
 
@@ -10,11 +8,28 @@ import matplotlib.pyplot as plt
 import colorsys
 
 from scipy.signal import find_peaks
+
 import random
+import pandas as pd
 
 COLOR_WHEEL_NAMES = ['Rot', 'Orange', 'Gelb', 'Limette', 'Grün', 'Türkis', 'Cyan', 'Azurblau', 'Blau', 'Lila', 'Magenta', 'Purpur']
-    
+  
+
+# x = np.linspace(0.0, 1.0, 100)
+
+# fig, ax = plt.subplots()
+
+# ax.plot(x, (np.sin(x*np.pi*2 - np.pi/2)/2 + 0.5) * x)
+
+# st.pyplot(fig)
+
+# st.stop()
+
 st.title('Merkmalextraktion und Repräsentation')
+st.write('Für die Merkmalsextraktion wurde Pixel für Pixel vom RGB Farbraum in den HSL (Hue, Saturation, Lightness) Farbraum transformiert. Damit kann ein Histogramm über den Farbwert (H) bestimmt werden, welches auch als Merkmalrepräsentation gespeichert wird. Dabei wird die Sättigung (S) und die Helligkeit (L) als Gewichtung w genutzt, um möglichst dominante Farben zu erkennen. Denn eine Farbe darf nicht zu dunkel (L=0) und nicht zu hell (L=1) sein, sowie eine möglichst hohe Sättigung S aufweisen. Deshalb wird die folgende Funktion zur Bestimmung der Gewichtung w verwendet:')
+st.latex(r'''
+    \left( \frac{1}{2} \sin(2 \pi L - \frac{\pi}{2}) + \frac{1}{2} \right) \cdot L \cdot S^2
+''')
 
 photoset_path = os.path.join('data', 'photoset')
 
@@ -44,11 +59,13 @@ n_bins = 100
 feature_data_path = os.path.join(photoset_path, 'features')
 if not os.path.exists(feature_data_path):
     os.makedirs(feature_data_path)
+file_list_path = os.path.join(feature_data_path, 'file_list.csv')
 histogram_data_path = os.path.join(feature_data_path, 'histogram_data.numpy')
 save_hist_data = True
 if os.path.isfile(histogram_data_path):
     histogram_data = np.fromfile(histogram_data_path).reshape((len(img_files_list), n_bins))
     img_files_list = [random.choice(img_files_list)]
+    # img_files_list = [img_files_list[25]]
     save_hist_data = False
     st.subheader('Beispiel der Merkmalextraktion eines Datenobjektes')
 else:
@@ -87,9 +104,14 @@ for i_file, img_path in enumerate(img_files_list):
         #H[i], S[i], V[i] = colorsys.rgb_to_hsv(R[i], G[i], B[i])
         #w = S[i]*(V[i]/255)
         H[i], L[i], S[i] = colorsys.rgb_to_hls(R[i]/255, G[i]/255, B[i]/255)
-        w[i] = L[i]*S[i]
-        if i%1000 == 0:
-            ax_px.plot(H[i], w[i], '.', color=(R[i]/255, G[i]/255, B[i]/255))
+        #w[i] = 1-(L[i]-0.5)**2 * S[i]
+
+        w[i] = (np.sin(L[i]*np.pi*2 - np.pi/2)/2 + 0.5) * L[i] * S[i] * S[i] 
+
+        #w[i] = w[i]**2
+
+        if i%300 == 0:
+            ax_px.scatter(H[i], w[i], color=(R[i]/255, G[i]/255, B[i]/255), edgecolor='#000000')
 
     ax_px.set_xlim([0.0, 1.0])
     ax_px.set_title('Merkmalsraum')
@@ -97,22 +119,23 @@ for i_file, img_path in enumerate(img_files_list):
 
 
     # fig, ax = plt.subplots()
-    H_hist, H_bins = np.histogram(H, bins=n_bins, density=True, weights=w)
+    H_hist, H_bins = np.histogram(H, bins=n_bins, range=(0.0, 1.0), density=True, weights=w)
+    # st.write(H_bins)
+    # st.write(H_hist)
     if save_hist_data:
         histogram_data[i_file,:] = H_hist
     for k in range(n_bins):
-        r, g, b = colorsys.hsv_to_rgb(H_bins[k+1], 1.0, 1.0)
+        r, g, b = colorsys.hls_to_rgb(H_bins[k+1], 0.5, 1.0)
         ax_hist.bar(H_bins[k+1], H_hist[k], width=np.abs(np.amax(H_bins) - np.amin(H_bins))/n_bins, color=(r, g, b))
     # for k in range(int(n_bins*0.2)):
     #     r, g, b = colorsys.hsv_to_rgb(H_bins[k+1], 1.0, 1.0)
     #     ax.bar(H_bins[k+1]+1, H_hist[k], width=np.abs(np.amax(H_bins) - np.amin(H_bins))/n_bins, color=(r, g, b), alpha=0.5)
 
-    st.write(np.sum(H_hist)) # this will be always around 100.0
+    #st.write(np.sum(H_hist)) # this will be always around 100.0
 
     n_cols = len(COLOR_WHEEL_NAMES)
-    peaks, props = find_peaks(H_hist, prominence=np.amax(H_hist)*0.1, distance=n_bins/n_cols/2, width=int(n_bins*0.01))
+    peaks, props = find_peaks(H_hist, distance=n_bins/n_cols, prominence=np.amax(H_hist)*0.01)#, width=int(n_bins*0.01))
     ax_hist.plot(H_bins[peaks+1], H_hist[peaks], 'kx', markersize=10)
-
 
     col_borders = np.linspace(-1.0/n_cols/2, 1.0 + 1.0/n_cols/2, n_cols+2)
     col_names = []
@@ -129,11 +152,17 @@ for i_file, img_path in enumerate(img_files_list):
 
     fig.tight_layout()
     st.pyplot(fig)
-    st.caption(f'Merkmalsignatur: {", ".join(col_names)}')
+    st.caption(f'''
+        Beispielbild mit transformierten Pixeln und dazugehörigen gewichteten Histogramm.\n
+        Merkmalsignatur: {", ".join(col_names)}
+    ''')
 
 calc_hist_progress.empty()
 if save_hist_data:
     histogram_data.tofile(histogram_data_path)
+
+    df = pd.DataFrame(data={"file": img_files_list})
+    df.to_csv(file_list_path, sep=',',index=True)
 
 # st.write(histogram_data.shape)
 # st.write(histogram_data)

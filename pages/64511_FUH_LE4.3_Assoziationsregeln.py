@@ -40,7 +40,7 @@ bar_width = 1.0/n_bins
 hue = np.linspace(0.0, 1.0, n_bins+1)[0:-1]
 n_cols = len(COLOR_WHEEL_NAMES)
 
-
+data = []
 col1, col2, col3, col4, col5 = st.columns(5)
 cols = [col1, col2, col3, col4, col5]
 for i, img_file in enumerate(img_files_list):
@@ -85,6 +85,74 @@ for i, img_file in enumerate(img_files_list):
     # st.pyplot(fig)
 
 
-
+    # st.write(col_names)
+    data.append(col_names)
     #crnt_column.caption(f'{", ".join(col_names)}')
     crnt_column.write(caption, unsafe_allow_html=True)
+
+
+# data = [
+#   ['A', 'B', 'E'],
+#   ['B', 'D'],
+#   ['B', 'C'],
+#   ['A', 'B', 'D'],
+#   ['A', 'B', 'C', 'E'],
+#   ['A', 'B', 'C']
+# ]
+
+# st.write(data)
+
+l1 = []
+for d in data:
+    for elem in d:
+        if not elem in l1:
+            l1.append(elem)
+
+l1.sort()
+lk = [[l] for l in l1]
+
+def join(a, b):
+    c = a.copy()
+    for elem in b:
+        if not elem in a:
+            c.append(elem)
+    c.sort()
+    return c
+
+def a_is_in_b(a, b):
+    for elem in a:
+        if not elem in b:
+            return False
+    return True
+    
+def count_a_in_b(a, b):
+    for i in a:
+        count = 0
+        for j in b:
+            if a_is_in_b(i, j):
+                count += 1
+        
+        # st.write(i, count)
+        if count > 1:
+            st.write(f'{", ".join(i)}: {count}')
+
+count_a_in_b(lk, data)
+
+for k in range(0, 5):
+    
+    lk_1 = []
+    n = len(lk)
+    for i in range(0, n):
+        for j in range(i+1, n):
+            do_join = True
+            for l in range(0,len(lk[i])-1):
+                if lk[i][l] != lk[j][l]:
+                    do_join = False
+                    break
+            if do_join:
+                lk_1.append(join(lk[i], lk[j]))
+    
+    lk = lk_1	
+    
+    count_a_in_b(lk, data)
+

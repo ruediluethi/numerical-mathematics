@@ -15,21 +15,24 @@ import pandas as pd
 COLOR_WHEEL_NAMES = ['Rot', 'Orange', 'Gelb', 'Limette', 'Grün', 'Türkis', 'Cyan', 'Azurblau', 'Blau', 'Lila', 'Magenta', 'Purpur']
   
 
-# x = np.linspace(0.0, 1.0, 100)
-
-# fig, ax = plt.subplots()
-
-# ax.plot(x, (np.sin(x*np.pi*2 - np.pi/2)/2 + 0.5) * x)
-
-# st.pyplot(fig)
-
-# st.stop()
-
 st.title('Merkmalextraktion und Repräsentation')
 st.write('Für die Merkmalsextraktion wurde Pixel für Pixel vom RGB Farbraum in den HSL (Hue, Saturation, Lightness) Farbraum transformiert. Damit kann ein Histogramm über den Farbwert (H) bestimmt werden, welches auch als Merkmalrepräsentation gespeichert wird. Dabei wird die Sättigung (S) und die Helligkeit (L) als Gewichtung w genutzt, um möglichst dominante Farben zu erkennen. Denn eine Farbe darf nicht zu dunkel (L=0) und nicht zu hell (L=1) sein, sowie eine möglichst hohe Sättigung S aufweisen. Deshalb wird die folgende Funktion zur Bestimmung der Gewichtung w verwendet:')
 st.latex(r'''
     w(S, L) = \left( \frac{1}{2} \sin(2 \pi L - \frac{\pi}{2}) + \frac{1}{2} \right) \cdot L \cdot S^2
 ''')
+
+
+L = np.linspace(0.0, 1.0, 100)
+
+fig, ax = plt.subplots()
+
+def w_fun(L):
+    y_cap_scale = 1.5
+    return np.clip((np.sin(L * np.pi*2 - np.pi/2)/2 + 0.5) * y_cap_scale, 0.0, 1.0)
+
+ax.plot(L, w_fun(L))
+
+st.pyplot(fig)
 
 photoset_path = os.path.join('data', 'photoset')
 
@@ -51,7 +54,7 @@ img_files_list = []
 for file in os.listdir(photoset_path):
     img_path = os.path.join(photoset_path, file)
     if os.path.isfile(img_path):
-        img_files_list.append(img_path)
+        img_files_list.append(img_path.replace('\\', '/'))
 
 #st.write(len(img_files_list))
 
@@ -70,6 +73,8 @@ if os.path.isfile(histogram_data_path):
     st.subheader('Beispiel der Merkmalextraktion eines Datenobjektes')
 else:
     histogram_data = np.zeros((len(img_files_list), n_bins))
+
+st.write(img_files_list)
 
 calc_hist_progress = st.progress(0.0, 'calc histogram data ...')
 for i_file, img_path in enumerate(img_files_list):
@@ -106,7 +111,8 @@ for i_file, img_path in enumerate(img_files_list):
         H[i], L[i], S[i] = colorsys.rgb_to_hls(R[i]/255, G[i]/255, B[i]/255)
         #w[i] = 1-(L[i]-0.5)**2 * S[i]
 
-        w[i] = (np.sin(L[i]*np.pi*2 - np.pi/2)/2 + 0.5) * L[i] * S[i] * S[i] 
+        #w[i] = (np.sin(L[i]*np.pi*2 - np.pi/2)/2 + 0.5) * L[i] * S[i] * S[i] 
+        w[i] = w_fun(L[i]) * S[i]**2
 
         #w[i] = w[i]**2
 

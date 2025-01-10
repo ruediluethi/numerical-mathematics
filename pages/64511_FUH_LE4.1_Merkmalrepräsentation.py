@@ -16,23 +16,40 @@ COLOR_WHEEL_NAMES = ['Rot', 'Orange', 'Gelb', 'Limette', 'Grün', 'Türkis', 'Cy
   
 
 st.title('Merkmalextraktion und Repräsentation')
-st.write('Für die Merkmalsextraktion wurde Pixel für Pixel vom RGB Farbraum in den HSL (Hue, Saturation, Lightness) Farbraum transformiert. Damit kann ein Histogramm über den Farbwert (H) bestimmt werden, welches auch als Merkmalrepräsentation gespeichert wird. Dabei wird die Sättigung (S) und die Helligkeit (L) als Gewichtung w genutzt, um möglichst dominante Farben zu erkennen. Denn eine Farbe darf nicht zu dunkel (L=0) und nicht zu hell (L=1) sein, sowie eine möglichst hohe Sättigung S aufweisen. Deshalb wird die folgende Funktion zur Bestimmung der Gewichtung w verwendet:')
+st.write(r'''
+    Für die Merkmalsextraktion wurde Pixel für Pixel vom RGB Farbraum in den HSL (**H**ue, **S**aturation, **L**ightness) Farbraum transformiert. 
+    Damit kann ein Histogramm über den Farbwert $H$ bestimmt werden, welches auch als Merkmalrepräsentation gespeichert wird. 
+    Dabei wird die Sättigung $S$ und die Helligkeit $L$ als Gewichtung $w$ genutzt, um möglichst dominante Farben zu erkennen.
+''')
+st.write(r'''
+    Eine dominante Farbe darf nicht zu dunkel $L=0$ und nicht zu hell $L=1$ sein.
+    Dies wird in der Gewichtung $w$ durch die Funktion $w_L(L, \alpha)$ berücksichtig.
+    Um zusätzlich die Werte in der Mitte höher zu gewichten wird der Skalierungsfaktor $\alpha$ verwendet und der Wert von $w_L$ auf maximal $1$ begrenzt. 
+''')
 st.latex(r'''
-    w(S, L) = \left( \frac{1}{2} \sin(2 \pi L - \frac{\pi}{2}) + \frac{1}{2} \right) \cdot L \cdot S^2
+    w_L(L, \alpha) = \left( \frac{1}{2} \sin(2 \pi L - \frac{\pi}{2}) + \frac{1}{2} \right) * \alpha
+''')
+def w_fun(L, y_cap_scale=1.5):
+    return np.clip((np.sin(L * np.pi*2 - np.pi/2)/2 + 0.5) * y_cap_scale, 0.0, 1.0)
+
+L = np.linspace(0.0, 1.0, 1000)
+fig, ax = plt.subplots(figsize=(6, 3))
+ax.plot(L, w_fun(L, 1.0), 'k--', label=r'$\alpha=1.0$')
+ax.plot(L, w_fun(L), 'k', label=r'$\alpha=1.5$')
+ax.plot(L, w_fun(L, 2.0), 'k:', label=r'$\alpha=2.0$')
+ax.set_xlabel(r'$L$')
+ax.set_ylabel(r'$w_L(L, \alpha)$')
+ax.legend()
+st.pyplot(fig)
+st.caption(r'''
+    Beispiel der Funktion $w_L(L, \alpha)$ für $\alpha=1.0$, $\alpha=1.5$ und $\alpha=2.0$.
+    Für das weitere generieren der Histogramme wurde $\alpha=1.5$ verwendet.
 ''')
 
 
-L = np.linspace(0.0, 1.0, 100)
-
-fig, ax = plt.subplots()
-
-def w_fun(L):
-    y_cap_scale = 1.5
-    return np.clip((np.sin(L * np.pi*2 - np.pi/2)/2 + 0.5) * y_cap_scale, 0.0, 1.0)
-
-ax.plot(L, w_fun(L))
-
-st.pyplot(fig)
+st.write(r'''
+    Die Sättigung $S$ geht im Quadrat in die Gewichtung $w(S, L) = S^2 \cdot w_L(L, \alpha=1.5)$ mit ein.
+''')
 
 photoset_path = os.path.join('data', 'photoset')
 
@@ -74,7 +91,7 @@ if os.path.isfile(histogram_data_path):
 else:
     histogram_data = np.zeros((len(img_files_list), n_bins))
 
-st.write(img_files_list)
+# st.write(img_files_list)
 
 calc_hist_progress = st.progress(0.0, 'calc histogram data ...')
 for i_file, img_path in enumerate(img_files_list):
@@ -112,7 +129,7 @@ for i_file, img_path in enumerate(img_files_list):
         #w[i] = 1-(L[i]-0.5)**2 * S[i]
 
         #w[i] = (np.sin(L[i]*np.pi*2 - np.pi/2)/2 + 0.5) * L[i] * S[i] * S[i] 
-        w[i] = w_fun(L[i]) * S[i]**2
+        w[i] = S[i]**2 * w_fun(L[i])
 
         #w[i] = w[i]**2
 
@@ -121,6 +138,7 @@ for i_file, img_path in enumerate(img_files_list):
 
     ax_px.set_xlim([0.0, 1.0])
     ax_px.set_title('Merkmalsraum')
+    ax_px.set_ylabel(r'$w(S, L)$')
     # st.pyplot(fig)
 
 
@@ -136,6 +154,8 @@ for i_file, img_path in enumerate(img_files_list):
     
     ax_hist.set_xlim([0.0, 1.0])
     ax_hist.set_title('Histogramm')
+    ax_hist.set_xlabel(r'Farbwert $H$')
+    ax_hist.set_ylabel('Anzahl')
 
     fig.tight_layout()
     st.pyplot(fig)

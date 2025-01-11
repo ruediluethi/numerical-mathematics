@@ -308,8 +308,10 @@ example_count = get_count(example_col_ids)
 
 # st.write(col_comb)
 # st.write(example_count[i])
-st.write(f"$|{r' \cap '.join(used_formula_names)}| = {example_count}$")
+cap_string = ' \cap '.join(used_formula_names)
+st.write(f"$|{cap_string}| = {example_count}$")
 P_cap = example_count / len(img_files_list)
+
 st.write(f'${r'\mathbb{P}'}({r' \cap '.join(used_formula_names)}) = {round(P_cap*100, 2)}$%')
 
 st.info(f'*Die Wahrscheinlichkeit, dass die Farben **{', '.join(example_cols)}** in einem Bild vorkommen beträgt **{round(P_cap*100, 2)}%**.*')

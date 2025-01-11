@@ -308,7 +308,7 @@ example_count = get_count(example_col_ids)
 
 # st.write(col_comb)
 # st.write(example_count[i])
-st.write(f'$|{" \cap ".join(used_formula_names)}| = {example_count}$')
+st.write(f"$|{' \cap '.join(used_formula_names)}| = {example_count}$")
 P_cap = example_count / len(img_files_list)
 st.write(f'${r'\mathbb{P}'}({' \cap '.join(used_formula_names)}) = {round(P_cap*100, 2)}$%')
 

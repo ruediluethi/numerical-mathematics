@@ -315,7 +315,8 @@ P_cap = example_count / len(img_files_list)
 P_string = r'\mathbb{P}'
 st.write(f'${P_string}({cap_string}) = {round(P_cap*100, 2)}$%')
 
-st.info(f'*Die Wahrscheinlichkeit, dass die Farben **{', '.join(example_cols)}** in einem Bild vorkommen beträgt **{round(P_cap*100, 2)}%**.*')
+cols_string = ', '.join(example_cols)
+st.info(f'*Die Wahrscheinlichkeit, dass die Farben **{cols_string}** in einem Bild vorkommen beträgt **{round(P_cap*100, 2)}%**.*')
 
 st.subheader('Konfidenz')
 st.write(r'''
@@ -348,9 +349,9 @@ else:
     P_X_cap_Y = XY_cap / len(img_files_list)
 
     st.write(f'$X = $ {COLOR_WHEEL_NAMES[X_id]}, $Y = $ {COLOR_WHEEL_NAMES[Y_id]}')
-    st.write(f'$|X| = {base_colors[X_id]}$, ${r'\mathbb{P}'}(X) = {round(P_X*100, 2)}$%')
-    st.write(f'$|X \cap Y| = {XY_cap}$, ${r'\mathbb{P}'}(X \cap Y) = {round(P_X_cap_Y*100, 2)}$%')
+    st.write(f'$|X| = {base_colors[X_id]}$, ${P_string}(X) = {round(P_X*100, 2)}$%')
+    st.write(f'$|X \cap Y| = {XY_cap}$, ${P_string}(X \cap Y) = {round(P_X_cap_Y*100, 2)}$%')
     P_Y_pipe_X = P_X_cap_Y / P_X
-    st.write(f'$X \Rightarrow Y: \quad {r'\mathbb{P}'}(Y | X) = {round(P_Y_pipe_X * 100, 2)}$%')
+    st.write(f'$X \Rightarrow Y: \quad {P_string}(Y | X) = {round(P_Y_pipe_X * 100, 2)}$%')
 
-    st.info(f'*Ist die Farbe **{X}** im Bild enthalten, so ist zu **{round(P_Y_pipe_X * 100, 2)}%** auch **{Y}** zu sehen.*')
+    st.info(f'*Ist die Farbe **{X}** im Bild enthalten, so ist zu **{round(P_Y_pipe_X * 100, 2)}%** Wahrscheinlichkeit auch **{Y}** zu sehen.*')

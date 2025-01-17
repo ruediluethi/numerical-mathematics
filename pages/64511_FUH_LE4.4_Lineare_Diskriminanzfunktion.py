@@ -14,6 +14,7 @@ import pandas as pd
 
 
 st.title('Lineare Diskriminanzfunktion')
+st.write('Datenquelle: https://www.kaggle.com/datasets/rtatman/lego-database')
 
 df_themes = pd.read_csv('data/lego/themes.csv')
 df_themes = df_themes.set_index('id')

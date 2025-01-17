@@ -20,9 +20,18 @@ st.title('Lineare Diskriminanzfunktion')
 st.write(r'''
     Sei $x_i = (1, {x_i}_1, ..., {x_i}_D)^\intercal \in \mathbb{R}^{D+1}$ ein Vektor, welcher die Merkmale eines Datenobjekts in der Dimension $D$ repräsentiert
     und sei $y_i \in \{1, -1\}$ die zugehörige Klasse des Datenobjekts.
-    So ist eine lineare Abbildung gesucht, welche die Merkmale $x_i$ auf ihre Dimension $y_i$ abbildet.
+    Nun wird ein Vektor $w = (w_0, w_1, ..., w_D)^\intercal$ gesucht, 
+    dessen Skalarprodukt mit $w_i$ möglichst in die richtige Richtung 
+    des Klassifikationsvektors $y_i$ zeigt. 
+    Also gilt für die zu minimierende Funktion $J(w)$
 ''')
 
+st.latex(r'''
+    J(w) 
+    = \sum_{i=1}^n (y_i - x_i^\intercal w)^2 
+    = \left\Vert y - Xw \right\Vert^2 \\
+    \Rightarrow \quad J'(w) = 0
+''')
 
 
 st.write('Datenquelle: https://www.kaggle.com/datasets/rtatman/lego-database')

@@ -193,7 +193,7 @@ def classify(X_a, X_b, label_a=None, label_b=None):
 
     st.pyplot(fig)
 
-classify(X_friends[:,0:2], X_starwars[:,0:2], 'red', 'gray')
+classify(X_friends[:,0:2], X_starwars[:,0:2], 'gray', 'red')
 classify(X_friends[:,[0,2]], X_starwars[:,[0,2]], 'gray', 'green')
 classify(X_friends[:,1:3], X_starwars[:,1:3], 'red', 'green')
 

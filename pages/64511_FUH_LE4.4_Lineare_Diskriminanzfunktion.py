@@ -11,9 +11,20 @@ import random
 from scipy.stats import norm
 import colorsys
 import pandas as pd
-
+import plotly.express as px
+import plotly.graph_objects as go
 
 st.title('Lineare Diskriminanzfunktion')
+
+
+st.write(r'''
+    Sei $x_i = (1, {x_i}_1, ..., {x_i}_D)^\intercal \in \mathbb{R}^{D+1}$ ein Vektor, welcher die Merkmale eines Datenobjekts in der Dimension $D$ repräsentiert
+    und sei $y_i \in \{1, -1\}$ die zugehörige Klasse des Datenobjekts.
+    So ist eine lineare Abbildung gesucht, welche die Merkmale $x_i$ auf ihre Dimension $y_i$ abbildet.
+''')
+
+
+
 st.write('Datenquelle: https://www.kaggle.com/datasets/rtatman/lego-database')
 
 df_themes = pd.read_csv('data/lego/themes.csv')
@@ -21,40 +32,42 @@ df_themes = df_themes.set_index('id')
 
 df_sets = pd.read_csv('data/lego/sets.csv')
 df_sets_count = pd.DataFrame(df_sets.groupby('theme_id')['num_parts'].count().sort_values(ascending=False))
-st.write(df_sets_count.join(df_themes))
+# st.write(df_sets_count.join(df_themes))
 
 df_inventories = pd.read_csv('data/lego/inventories.csv')
 df_parts = pd.read_csv('data/lego/parts.csv')
-# st.write(df_parts)
 df_inv_parts = pd.read_csv('data/lego/inventory_parts.csv')
 
 df_color_list = pd.read_csv('data/lego/colors.csv')
 df_color_list = df_color_list.rename(columns={'id': 'color_id'})
-
 st.write(df_color_list)
-# st.write(df_color_list[df_color_list['name'].str.contains('Gray')])
+
 gray_colors = df_color_list[(df_color_list['name'].str.contains('Black')) |
                             (df_color_list['name'].str.contains('Gray')) |
                             (df_color_list['name'].str.contains('Opaque'))
                         ]['name'].to_list()
-st.write(gray_colors)
-
 red_colors = df_color_list[
                             (df_color_list['name'].str.contains('Red')) | 
                             (df_color_list['name'].str.contains('Purple')) | 
                             (df_color_list['name'].str.contains('Pink')) |
-                            (df_color_list['name'].str.contains('Lavender'))
+                            (df_color_list['name'].str.contains('Lavender')) |
+                            (df_color_list['name'].str.contains('Magenta')) |
+                            (df_color_list['name'].str.contains('Orange')) |
+                            (df_color_list['name'].str.contains('Yellow'))
                         ]['name'].to_list()
+
+# red_colors = df_color_list[
+#                             (df_color_list['name'].str.contains('Blue')) | 
+#                             (df_color_list['name'].str.contains('Azure'))
+#                         ]['name'].to_list()
 
 green_colors = df_color_list[
                             (df_color_list['name'].str.contains('Green')) | 
                             (df_color_list['name'].str.contains('Lime'))
                         ]['name'].to_list()
-# purple_colors = df_color_list[(df_color_list['name'].str.contains('Red')) | (df_color_list['name'].str.contains('Green')) | (df_color_list['name'].str.contains('Blue'))]['name'].to_list()
-# purple_colors = df_color_list[(df_color_list['name'].str.contains('Blue'))]['name'].to_list()
-st.write(red_colors)
 
-def get_X(theme_name):
+
+def get_X(theme_name, min_parts=100):
 
     st.header(theme_name)
 
@@ -106,7 +119,7 @@ def get_X(theme_name):
     st.write(pd.DataFrame({
         'color': col_names[col_sort],
         'count': col_count[col_sort]
-    }))
+    }).head(20))
 
     # st.write(np.array(color_list)[col_sort])
     # st.write(col_count[col_sort])
@@ -117,124 +130,131 @@ def get_X(theme_name):
     parts_count = X.sum(axis=1)[:, np.newaxis]
     X = X / parts_count
 
-    st.write(col_names[0:len(gray_colors)])
-    st.write(col_names[len(gray_colors):len(gray_colors) + len(red_colors)])
+    # st.write(col_names[0:len(gray_colors)])
+    # st.write(col_names[len(gray_colors):len(gray_colors) + len(red_colors)])
 
-    st.write(X.shape)
     X_reduced = np.zeros((X.shape[0], 3))
-    st.write(X_reduced.shape)
     X_reduced[:,0] = X[:,0:len(gray_colors)].sum(axis=1).flatten()
     X_reduced[:,1] = X[:,len(gray_colors):len(gray_colors) + len(red_colors)].sum(axis=1).flatten()
     X_reduced[:,2] = X[:,len(gray_colors) + len(red_colors):len(gray_colors) + len(red_colors) + len(green_colors)].sum(axis=1).flatten()
 
-    count_filter = np.argwhere(parts_count > 70)[:,0]
+    count_filter = np.argwhere(parts_count > min_parts)[:,0]
 
-    return X_reduced[count_filter,:] #, col_names, col_sort
+    X_reduced = X_reduced[count_filter,:]
+    # X_reduced = X_reduced / X_reduced.sum(axis=1)[:, np.newaxis]
+
+    return X_reduced
+
+    col_min = X_reduced.min(axis=0)
+    col_max = X_reduced.max(axis=0)
+
+    return (X_reduced - col_min) / (col_max - col_min)
 
 
-X_friends = get_X('Friends')
-# X_city = get_X('City')
-X_starwars = get_X('Star Wars')
+X_friends = get_X('Friends', min_parts=150)
+X_starwars = get_X('Star Wars', min_parts=70)
 
-fig, ax = plt.subplots()
-ax.plot(X_friends[:,0], X_friends[:,1], 'r.')
-ax.plot(X_starwars[:,0], X_starwars[:,1], 'k.')
-ax.set_xlabel('gray')
-ax.set_ylabel('red')
-st.pyplot(fig)
+def classify(X_a, X_b, label_a=None, label_b=None):
+    n = X_a.shape[0] + X_b.shape[0]
+    X = np.ones((n, 3))
+    X[0:X_a.shape[0],1:3] = X_a
+    X[X_a.shape[0]:,1:3] = X_b
 
-fig, ax = plt.subplots()
-ax.plot(X_friends[:,0], X_friends[:,2], 'r.')
-ax.plot(X_starwars[:,0], X_starwars[:,2], 'k.')
-ax.set_xlabel('gray')
-ax.set_ylabel('green')
-st.pyplot(fig)
+    y = np.ones(n)
+    y[X_a.shape[0]:] = -1
 
-fig, ax = plt.subplots()
-ax.plot(X_friends[:,1], X_friends[:,2], 'r.')
-ax.plot(X_starwars[:,1], X_starwars[:,2], 'k.')
-ax.set_xlabel('red')
-ax.set_ylabel('green')
-st.pyplot(fig)
+    pseudo_inv = linalg.inv(X.T @ X) @ X.T
+    w = pseudo_inv @ y
 
-st.stop()
-
-#theme_name = 'Dinosaurs'
-#theme_name = 'Train'
-
-X, col, sort = get_X('Star Wars')
-
-parts_count = X.sum(axis=1)[:, np.newaxis]
-st.write(parts_count)
-
-count_filter = np.argwhere(parts_count > 20)[:,0]
-
-st.write(parts_count)
-st.write(count_filter.shape)
-
-X = X / parts_count
-
-fig, ax = plt.subplots()
-ax.plot(X[count_filter,0], X[count_filter,1], 'k.')
-st.pyplot(fig)
-
-for _, i in enumerate(sort):
     fig, ax = plt.subplots()
-    ax.plot(X[count_filter,i], 'k.')
-    ax.set_xlabel(col[i])
+    ax.plot(X[:,1][y==1], X[:,2][y==1], 'wo', markeredgecolor='k', label='Friends')
+    ax.plot(X[:,1][y==-1], X[:,2][y==-1], 'k.')
+
+    x = np.linspace(X[:,1].min(), X[:,1].max(), 1000)
+    border = (-w[0]-w[1]*x) / w[2]
+    border_below = np.argwhere((X[:,2].min() < border) & (border < X[:,2].max()))
+    ax.plot(x[border_below], border[border_below], 'k--', label='decision boundary')
+    
+    if label_a is not None:
+        ax.set_xlabel(label_a)
+    if label_b is not None:
+        ax.set_ylabel(label_b)
+
+    ax.set_aspect('equal')
+
     st.pyplot(fig)
 
+classify(X_friends[:,[1,0]], X_starwars[:,[1,0]], 'red', 'gray')
+classify(X_friends[:,[0,2]], X_starwars[:,[0,2]], 'gray', 'green')
+classify(X_friends[:,1:3], X_starwars[:,1:3], 'red', 'green')
+
+def classify_3d(X_a, X_b, label_a=None, label_b=None, label_c=None):
+    n = X_a.shape[0] + X_b.shape[0]
+    X = np.ones((n, 4))
+    X[0:X_a.shape[0],1:4] = X_a
+    X[X_a.shape[0]:,1:4] = X_b
+
+    y = np.ones(n)
+    y[X_a.shape[0]:] = -1
+
+    st.write(X)
+    st.write(X.T @ X)
+
+    
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter3d(
+        x=X_a[:,0], y=X_a[:,1], z=X_a[:,2],
+        mode='markers',
+        marker=dict(size=5, color='red'),
+        name='Group A'
+    ))
+    fig.add_trace(go.Scatter3d(
+        x=X_b[:,0], y=X_b[:,1], z=X_b[:,2],
+        mode='markers',
+        marker=dict(size=5, color='blue'),
+        name='Group B'
+    ))
+
+    pseudo_inv = linalg.inv(X.T @ X) @ X.T
+    w = pseudo_inv @ y
+    st.write(w)
+
+    m = 100
+    x_1 = np.linspace(X[:,1].min(), X[:,1].max(), m)
+    x_2 = np.linspace(X[:,2].min(), X[:,2].max(), m)
+    x_3 = np.zeros((m,m))
+    for i in range(m):
+        for j in range(m):
+            x_3[i,j] = (-w[0] - w[1]*x_1[i] - w[2]*x_2[j]) / w[3]
+            if x_3[i,j] < X[:,3].min() or x_3[i,j] > X[:,3].max():
+                x_3[i,j] = np.nan
+
+    fig.add_trace(go.Surface(
+        x=x_1, y=x_2, z=x_3
+    ))
+    st.plotly_chart(fig)
+
+    # st.plotly_chart(px.scatter_3d(pd.DataFrame({
+    #     'x': X[:,1],
+    #     'y': X[:,2],
+    #     'z': X[:,3],
+    #     'c': y
+    # }), x='x', y='y', z='z', color='c'))
 
 
-# fig, ax = plt.subplots()
-# ax.plot(X[:,2], X[:,3], 'k.')
-# st.pyplot(fig)
+classify_3d(X_friends, X_starwars)
 
+n = 100
+X_test_a = np.zeros((n,3)) + np.random.rand(n,3) * 2
+n = 50
+X_test_b = np.ones((n,3)) + np.random.rand(n,3) * 1
 
-st.stop()
+classify_3d(X_test_a, X_test_b)
 
+st.header('dummy example')
 
-st.subheader('parts')
-df_inv_parts = pd.read_csv('data/lego/inventory_parts.csv')
-st.write(df_inv_parts)
-st.write(df_inv_parts[df_inv_parts['inventory_id'] == 87])
-
-df_color_list = pd.read_csv('data/lego/colors.csv')
-df_color_list = df_color_list.set_index('id')
-st.write(df_color_list)
-
-df_colors = df_inv_parts.groupby('color_id')['quantity'].sum()
-df_colors = pd.DataFrame(df_colors.sort_values(ascending=False))
-st.write(df_colors.join(df_color_list))
-
-df_inventories = df_inv_parts.groupby('inventory_id')['quantity'].sum()
-
-
-
-st.write(df_inv_parts.groupby('inventory_id')['quantity'].sum())
-
-st.stop()
-
-# df_heros = pd.read_csv('data/superheroes_data.csv')
-
-
-
-# df_male = df_heros[df_heros.gender == 'Male']
-# df_female = df_heros[df_heros.gender == 'Female']
-
-
-
-# st.write(df_female)
-
-# st.write(df_male)
-
-# fig, ax = plt.subplots()
-
-# ax.plot(df_female['combat'], df_female['durability'], 'r.')
-
-# ax.plot(df_male['combat'], df_male['durability'], 'b.')
-
-# st.pyplot(fig)
 
 df = pd.DataFrame({ 
     'age': [23, 17, 43, 68, 32],

@@ -13,6 +13,10 @@ import colorsys
 import pandas as pd
 from scipy.signal import find_peaks
 
+st.error('Begriffshäufigkeit (term frequency)')
+st.error('Dokumentenhäufigkeit (document frequency)')
+st.error('Inverse Dokumentenhäufigkeit (inverse document frequency)')
+
 st.title('Assoziationsregeln')
 st.write('''
     Anhand des im vorderen Schritt berechneten Histogramms wird zu jedem Bild ermittelt ob eine der 6 Grundfarben Rot, Gelb, Grün, Cyan, Blau oder Magenta in dem Bild vorkommt.

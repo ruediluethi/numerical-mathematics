@@ -6,6 +6,8 @@ import numpy.linalg as linalg
 from PIL import Image
 
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import colorsys
 import random
 
 from scipy.stats import norm
@@ -41,6 +43,36 @@ df_inv_parts = pd.read_csv('data/lego/inventory_parts.csv')
 df_color_list = pd.read_csv('data/lego/colors.csv')
 df_color_list = df_color_list.rename(columns={'id': 'color_id'})
 st.write(df_color_list)
+
+def w_fun(L, y_cap_scale=1):
+    return np.clip((np.sin(L * np.pi*2 - np.pi/2)/2 + 0.5) * y_cap_scale, 0.0, 1.0)
+
+fig, ax = plt.subplots()
+for i, row in df_color_list.iterrows():
+    r, g, b = mcolors.hex2color('#'+row['rgb'])
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+    #ax.plot([h], [s**2*w_fun(l)], 'o', color=(r, g, b))
+
+    ax.plot([h], [l], '.', color=(r, g, b), markersize=10)
+
+    if l < 0.15:
+        ax.plot([h], [l], 'wx')
+        st.write(row['name'])
+    elif l > 0.9:
+        #ax.plot([h], [l], 'X', color=(r, g, b), markersize=10)
+        ax.plot([h], [l], 'kx')
+    elif s < 0.15:
+        ax.plot([h], [l], 'k+')
+
+    elif h < 0.05:
+        ax.plot([h], [l], '.', color=(r, g, b), markersize=10)
+    elif h < 0.1:
+        ax.plot([h], [l], '.', color=(r, g, b), markersize=20)
+    
+
+st.pyplot(fig)
+
+st.stop()
 
 gray_colors = df_color_list[(df_color_list['name'].str.contains('Black')) |
                             (df_color_list['name'].str.contains('Gray')) |
@@ -78,8 +110,8 @@ def get_X(theme_name, min_parts=100):
     X = np.ones((0, len(color_list)))
 
 
-    # st.write(df_themes[df_themes['name'] == theme_name])
-    for theme_id, row in df_themes[df_themes['name'] == theme_name].iterrows():
+    # st.write(df_themes[df_themes['name'].str.contains(theme_name, case=False)])
+    for theme_id, row in df_themes[df_themes['name'].str.contains(theme_name, case=False)].iterrows():
         # st.subheader(theme_id)
         df_theme_sets = df_sets[df_sets['theme_id'] == theme_id]
         df_theme_sets = pd.merge(df_theme_sets, df_inventories, on='set_num')
@@ -151,8 +183,11 @@ def get_X(theme_name, min_parts=100):
     return (X_reduced - col_min) / (col_max - col_min)
 
 
-X_friends = get_X('Friends', min_parts=150)
-X_starwars = get_X('Star Wars', min_parts=70)
+X_friends = get_X('Friends', min_parts=50)
+X_starwars = get_X('Star Wars', min_parts=200)
+
+st.write(X_friends.shape)
+st.write(X_starwars.shape)
 
 def classify(X_a, X_b, label_a=None, label_b=None):
     n = X_a.shape[0] + X_b.shape[0]
@@ -184,9 +219,65 @@ def classify(X_a, X_b, label_a=None, label_b=None):
 
     st.pyplot(fig)
 
-classify(X_friends[:,[1,0]], X_starwars[:,[1,0]], 'red', 'gray')
-classify(X_friends[:,[0,2]], X_starwars[:,[0,2]], 'gray', 'green')
-classify(X_friends[:,1:3], X_starwars[:,1:3], 'red', 'green')
+def classify_poly(X_a, X_b, label_a=None, label_b=None):
+    n = X_a.shape[0] + X_b.shape[0]
+    X = np.ones((n, 3))
+    X[0:X_a.shape[0],1:3] = X_a
+    X[X_a.shape[0]:,1:3] = X_b
+
+    X2 = np.ones((n, 5))
+    X2[:,1] = X[:,1]
+    X2[:,2] = X[:,1]**2
+    X2[:,3] = X[:,2]
+    X2[:,4] = X[:,2]**2
+
+    # print(X2)
+
+    y = np.ones(n)
+    y[X_a.shape[0]:] = -1
+
+    pseudo_inv = linalg.inv(X2.T @ X2) @ X2.T
+    w = pseudo_inv @ y
+
+    fig, ax = plt.subplots()
+    ax.plot(X[:,1][y==1], X[:,2][y==1], 'wo', markeredgecolor='k', label='ok')
+    ax.plot(X[:,1][y==-1], X[:,2][y==-1], 'k.', label='nok')
+
+    x = np.linspace(X[:,1].min(), X[:,1].max(), 1000)
+
+    c = w[0] + w[1]*x + w[2]*x**2
+    b = w[3]
+    a = w[4]
+
+    ax.plot(x, (-b + np.sqrt(b**2 - 4*a*c)) /(2*a), 'r--', label='decision boundary')
+    ax.plot(x, (-b - np.sqrt(b**2 - 4*a*c)) /(2*a), 'b--', label='decision boundary')
+
+    # border = (-w[0]-w[1]*x) / w[2]
+    # border_below = np.argwhere((X[:,2].min() < border) & (border < X[:,2].max()))
+    # ax.plot(x[border_below], border[border_below], 'k--', label='decision boundary')
+    
+    if label_a is not None:
+        ax.set_xlabel(label_a)
+    if label_b is not None:
+        ax.set_ylabel(label_b)
+
+    res = 300
+    J = np.zeros((res, res))
+    for i, x1 in enumerate(np.linspace(X[:,1].min(), X[:,1].max(), res)):
+        for j, x2 in enumerate(np.linspace(X[:,2].min(), X[:,2].max(), res)):
+            J[j,i] = w[0] + w[1]*x1 + w[2]*x1**2 + w[3]*x2 + w[4]*x2**2
+    
+    J[J < 0] = J[J < 0] / np.min(J)
+    J[J > 0] = J[J > 0] / np.max(J)
+    J = (1 - J)**10
+
+    # ax.set_aspect('equal')
+
+    st.pyplot(fig)
+
+classify_poly(X_friends[:,[1,0]], X_starwars[:,[1,0]], 'red', 'gray')
+classify_poly(X_friends[:,[0,2]], X_starwars[:,[0,2]], 'gray', 'green')
+classify_poly(X_friends[:,1:3], X_starwars[:,1:3], 'red', 'green')
 
 def classify_3d(X_a, X_b, label_a=None, label_b=None, label_c=None):
     n = X_a.shape[0] + X_b.shape[0]

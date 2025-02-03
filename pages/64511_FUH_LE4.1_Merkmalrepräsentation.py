@@ -15,12 +15,75 @@ import pandas as pd
 COLOR_WHEEL_NAMES = ['Rot', 'Orange', 'Gelb', 'Limette', 'Grün', 'Türkis', 'Cyan', 'Azurblau', 'Blau', 'Lila', 'Magenta', 'Purpur']
   
 
-st.title('Merkmalextraktion und Repräsentation')
+st.title('Merkmalrepräsentation')
+
+# get data
+photoset_path = os.path.join('data', 'photoset')
+
+# raw_path = os.path.join(photoset_path, 'raw')
+# if os.path.isdir(raw_path):
+#     thumb_progress = st.progress(0.0, 'create thumbnails from raw ...')
+#     raw_files = os.listdir(raw_path)
+#     for i, file in enumerate(raw_files):
+#         thumb_progress.progress(i/len(raw_files), 'create thumbnails from raw ...')
+#         #thumb_path = os.path.join(photoset_path, f'{os.path.splitext(os.path.basename(file))[0]}.png')
+#         thumb_path = os.path.join(photoset_path, f'{str(i+1).zfill(2)}.png')
+#         if not os.path.isfile(thumb_path):
+#             img = Image.open(os.path.join(photoset_path, 'raw', file))
+#             thumb = img.resize((512, 512))
+#             thumb.save(thumb_path)
+#     thumb_progress.empty()
+
+img_files_list = []
+for file in os.listdir(photoset_path):
+    img_path = os.path.join(photoset_path, file)
+    if os.path.isfile(img_path):
+        img_files_list.append(img_path.replace('\\', '/'))
+
+
+# st.title('Merkmalextraktion und Repräsentation')
+st.subheader('Extraktion')
 st.write(r'''
-    Für die Merkmalsextraktion wurde Pixel für Pixel vom RGB Farbraum in den HSL (**H**ue, **S**aturation, **L**ightness) Farbraum transformiert. 
-    Damit kann ein Histogramm über den Farbwert $H$ bestimmt werden, welches auch als Merkmalrepräsentation gespeichert wird. 
-    Dabei wird die Sättigung $S$ und die Helligkeit $L$ als Gewichtung $w$ genutzt, um möglichst dominante Farben zu erkennen.
+    Jedes Datenobjekt (also in diesem Falle jedes Bild) wird Pixel für Pixel vom RGB Farbraum 
+    in den HLS (**H**ue, **L**ightness, **S**aturation) Farbraum (Merkmalsraum/Feature Space $\mathbb{F} = \mathbb{R}^3$) transformiert.
 ''')
+
+img_path = random.choice(img_files_list)
+image = Image.open(img_path)
+data = np.asarray(image)
+
+R = data[:,:,0].flatten()
+G = data[:,:,1].flatten()
+B = data[:,:,2].flatten()
+
+n = R.size
+H = np.zeros(n)
+L = np.zeros(n)
+S = np.zeros(n)
+
+fig = plt.figure(figsize=(12, 4))
+gs = fig.add_gridspec(1,2)
+ax_img = fig.add_subplot(gs[0,0])
+ax_F = fig.add_subplot(gs[0,1])
+
+ax_img.imshow(image)
+ax_img.set_title('Datenobjekt / Bild')
+
+ax_F.set_title(r'Merkmalsraum $\mathbb{F}$')
+ax_F.set_xlabel('Lightness / Helligkeit')
+ax_F.set_ylabel('Saturation / Sättigung')
+
+for i in range(n):
+    H[i], L[i], S[i] = colorsys.rgb_to_hls(R[i]/255, G[i]/255, B[i]/255)
+    if i%500 == 0:
+        red, green, blue = colorsys.hls_to_rgb(H[i], 0.5, 1.0)
+        # ax_F.scatter(L[i], S[i], color=(R[i]/255, G[i]/255, B[i]/255), edgecolor='#000000')
+        ax_F.scatter(L[i], S[i], color=(red, green, blue), edgecolor='none')
+
+st.pyplot(fig)
+
+st.subheader('Gewichtung (Kernel)')
+
 st.write(r'''
     Eine dominante Farbe darf nicht zu dunkel $L=0$ und nicht zu hell $L=1$ sein.
     Dies wird in der Gewichtung $w$ durch die Funktion $w_L(L, \alpha)$ berücksichtig.
@@ -32,11 +95,11 @@ st.latex(r'''
 def w_fun(L, y_cap_scale=1.5):
     return np.clip((np.sin(L * np.pi*2 - np.pi/2)/2 + 0.5) * y_cap_scale, 0.0, 1.0)
 
-L = np.linspace(0.0, 1.0, 1000)
+L_ = np.linspace(0.0, 1.0, 1000)
 fig, ax = plt.subplots(figsize=(6, 3))
-ax.plot(L, w_fun(L, 1.0), 'k--', label=r'$\alpha=1.0$')
-ax.plot(L, w_fun(L), 'k', label=r'$\alpha=1.5$')
-ax.plot(L, w_fun(L, 2.0), 'k:', label=r'$\alpha=2.0$')
+ax.plot(L_, w_fun(L_, 1.0), 'k--', label=r'$\alpha=1.0$')
+ax.plot(L_, w_fun(L_), 'k', label=r'$\alpha=1.5$')
+ax.plot(L_, w_fun(L_, 2.0), 'k:', label=r'$\alpha=2.0$')
 ax.set_xlabel(r'$L$')
 ax.set_ylabel(r'$w_L(L, \alpha)$')
 ax.legend()
@@ -51,43 +114,54 @@ st.write(r'''
     Die Sättigung $S$ geht im Quadrat in die Gewichtung $w(S, L) = S^2 \cdot w_L(L, \alpha=1.5)$ mit ein.
 ''')
 
-photoset_path = os.path.join('data', 'photoset')
+st.subheader('Histogramm')
 
-raw_path = os.path.join(photoset_path, 'raw')
-if os.path.isdir(raw_path):
-    thumb_progress = st.progress(0.0, 'create thumbnails from raw ...')
-    raw_files = os.listdir(raw_path)
-    for i, file in enumerate(raw_files):
-        thumb_progress.progress(i/len(raw_files), 'create thumbnails from raw ...')
-        #thumb_path = os.path.join(photoset_path, f'{os.path.splitext(os.path.basename(file))[0]}.png')
-        thumb_path = os.path.join(photoset_path, f'{str(i+1).zfill(2)}.png')
-        if not os.path.isfile(thumb_path):
-            img = Image.open(os.path.join(photoset_path, 'raw', file))
-            thumb = img.resize((512, 512))
-            thumb.save(thumb_path)
-    thumb_progress.empty()
+st.write(r'''
+    Damit kann ein Histogramm über den Farbwert $H$ bestimmt werden, welches auch als Merkmalrepräsentation gespeichert wird. 
+    Dabei wird die Sättigung $S$ und die Helligkeit $L$ als Gewichtung $w$ genutzt, um möglichst dominante Farben zu erkennen.
+''')
 
-img_files_list = []
-for file in os.listdir(photoset_path):
-    img_path = os.path.join(photoset_path, file)
-    if os.path.isfile(img_path):
-        img_files_list.append(img_path.replace('\\', '/'))
 
-#st.write(len(img_files_list))
+fig = plt.figure(figsize=(12, 10))
+gs = fig.add_gridspec(2,1)
+ax_F = fig.add_subplot(gs[0,0])
+ax_hist = fig.add_subplot(gs[1,0])
+
+w = np.zeros(n)
+for i in range(n):
+    w[i] = S[i]**2 * w_fun(L[i])
+    if i%500 == 0:
+        ax_F.scatter(H[i], w[i], color=(R[i]/255, G[i]/255, B[i]/255), edgecolor='#000000')
+
+ax_F.set_xlim([0.0, 1.0])
+ax_F.set_title('Merkmalsraum')
+ax_F.set_ylabel(r'$w(S, L)$')
 
 n_bins = 100
+H_hist, H_bins = np.histogram(H, bins=n_bins, range=(0.0, 1.0), density=True, weights=w)
+
+for k in range(n_bins):
+    r, g, b = colorsys.hls_to_rgb(H_bins[k+1], 0.5, 1.0)
+    ax_hist.bar(H_bins[k+1], H_hist[k], width=np.abs(np.amax(H_bins) - np.amin(H_bins))/n_bins, color=(r, g, b))
+
+ax_hist.set_xlim([0.0, 1.0])
+ax_hist.set_title('Histogramm')
+ax_hist.set_xlabel(r'Farbwert $H$')
+ax_hist.set_ylabel('Anzahl')
+
+st.pyplot(fig)
+
+
 feature_data_path = os.path.join(photoset_path, 'features')
 if not os.path.exists(feature_data_path):
     os.makedirs(feature_data_path)
 file_list_path = os.path.join(feature_data_path, 'file_list.csv')
 histogram_data_path = os.path.join(feature_data_path, 'histogram_data.numpy')
 save_hist_data = True
+
+
 if os.path.isfile(histogram_data_path):
-    histogram_data = np.fromfile(histogram_data_path).reshape((len(img_files_list), n_bins))
-    img_files_list = [random.choice(img_files_list)]
-    # img_files_list = [img_files_list[25]]
-    save_hist_data = False
-    st.subheader('Beispiel der Merkmalextraktion eines Datenobjektes')
+    st.stop()
 else:
     histogram_data = np.zeros((len(img_files_list), n_bins))
 
@@ -97,9 +171,7 @@ calc_hist_progress = st.progress(0.0, 'calc histogram data ...')
 for i_file, img_path in enumerate(img_files_list):
     calc_hist_progress.progress(i_file/len(img_files_list), 'calc histogram data ...')
 
-
     image = Image.open(img_path)
-
     data = np.asarray(image)
 
     R = data[:,:,0].flatten()

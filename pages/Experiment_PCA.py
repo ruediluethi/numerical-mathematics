@@ -13,7 +13,9 @@ party_colors = {
     'CDU/CSU': '#191919',
     'FDP': '#ffe300',
     'DIE LINKE.': '#e60e98',
+    'Die Linke': '#e60e98',
     'BÜ90/GR': '#65a129',
+    'BSW': '#7d254f',
     'Fraktionslos': '#aaaaaa',
     'AfD': '#00acd3',
 }
@@ -33,8 +35,16 @@ def get_data(data_dir):
 
     p_names = None
 
+    file_list = sorted(file_list)
+
+    st.write("...")
+
+    read_progress = st.progress(0.0)
     for v_index, file in enumerate(file_list):
+        read_progress.progress(v_index/len(file_list), text=file)
         raw_file = os.path.join(data_dir, file)
+        if ".DS_Store" in raw_file:
+            continue
         df = pd.read_excel(raw_file)
         df.describe()
 
@@ -55,10 +65,18 @@ def get_data(data_dir):
         v_i = A[:, v_index]
         A[:, v_index] = (v_i - np.mean(v_i)) / np.std(v_i)
 
+    read_progress.empty()
+
     return A, n, m, parties
 
-A, n, m, parties = get_data(data_dir)
+A, n, m_all, parties = get_data(data_dir)
 
+
+
+
+# st.write(A, n, m)
+
+# st.stop()
 
 st.write(r'''
     Sei $X_j$ ein Zufallsvektor welcher die $j$-te namentliche Abstimmung repräsentiert.
@@ -99,64 +117,77 @@ st.latex(r'''
 ''')
 
 
-# calc covariance matrix
-ATA = 1/n * A.T @ A
 
-# st.write(n,m)
-# st.write(ATA.shape)
-
-# get eigenvalues and eigenvectors from covariance matrix
-lambdas, V = np.linalg.eig(ATA)
+def plot_parliament(A, n, m):
 
 
-# in comparision the singular values decomposition
 
-# Sigma = np.zeros((m,n))
-# Sigma[:n,:n] = np.diag(np.sqrt(lambdas))
+    # calc covariance matrix
+    ATA = 1/n * A.T @ A
 
-# U = np.zeros((m,m))
-# for i in range(0,n):
-#     U[:,i] = 1/Sigma[i,i] * A @ V[:,i]
+    # st.write(n,m)
+    # st.write(ATA.shape)
 
-# for k in range(n,m):
-#     e_k = np.zeros(m)
-#     e_k[k] = 1
-#     u_k_ = e_k
-#     for j in range(0,k):
-#         u_k_ = u_k_ - U[:,j].T @ e_k * U[:,j]
-    
-#     U[:,k] = u_k_/np.linalg.norm(u_k_)
+    # get eigenvalues and eigenvectors from covariance matrix
+    lambdas, V = np.linalg.eig(ATA)
 
-# st.write(np.sum((U @ Sigma @ V.T) - A))
 
-# same with the built in function from numpy
-# U, S, Vh = np.linalg.svd(A)
-# st.write(U, S, Vh)
+    # in comparision the singular values decomposition
 
-# use only two eigenvalues and eigenvectors for 2D plot
-d = 2
-Sigma_ = np.zeros((n,d))
-Sigma_[:d,:d] = np.diag(np.sqrt(lambdas[:d]))
+    # Sigma = np.zeros((m,n))
+    # Sigma[:n,:n] = np.diag(np.sqrt(lambdas))
 
-# project the data onto the new 2D basis
-A_d = np.zeros((n,d))
-for i in range(0,d):
-    A_d[:,i] = A @ V[:,i]
+    # U = np.zeros((m,m))
+    # for i in range(0,n):
+    #     U[:,i] = 1/Sigma[i,i] * A @ V[:,i]
 
-# plot the data
-fig, ax = plt.subplots()
-legend = []
-for i, party in enumerate(parties):
-    label = None
-    if party not in legend:
-        legend.append(party)
-        label = party
+    # for k in range(n,m):
+    #     e_k = np.zeros(m)
+    #     e_k[k] = 1
+    #     u_k_ = e_k
+    #     for j in range(0,k):
+    #         u_k_ = u_k_ - U[:,j].T @ e_k * U[:,j]
+        
+    #     U[:,k] = u_k_/np.linalg.norm(u_k_)
 
-    ax.plot(A_d[i,0], A_d[i,1], '.', color=party_colors[party], alpha=0.4, label=label)
+    # st.write(np.sum((U @ Sigma @ V.T) - A))
 
-# ax.plot(A_[:,0], A_[:,1], 'k.')
-ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0), frameon=False)
-ax.set_xlabel(r'1. Hauptachse, $\tilde{a}_1$')
-ax.set_ylabel(r'2. Hauptachse, $\tilde{a}_2$')
-ax.set_aspect('equal')
-st.pyplot(fig)
+    # same with the built in function from numpy
+    # U, S, Vh = np.linalg.svd(A)
+    # st.write(U, S, Vh)
+
+    # use only two eigenvalues and eigenvectors for 2D plot
+    d = 2
+    Sigma_ = np.zeros((n,d))
+    Sigma_[:d,:d] = np.diag(np.sqrt(lambdas[:d]))
+
+    # project the data onto the new 2D basis
+    A_d = np.zeros((n,d))
+    for i in range(0,d):
+        A_d[:,i] = A @ V[:,i]
+
+    # plot the data
+    fig, ax = plt.subplots()
+    legend = []
+    for i, party in enumerate(parties):
+        label = None
+        if party not in legend:
+            legend.append(party)
+            label = party
+
+        ax.plot(A_d[i,0], A_d[i,1], '.', color=party_colors[party], alpha=0.4, label=label)
+
+    # ax.plot(A_[:,0], A_[:,1], 'k.')
+    ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0), frameon=False)
+    ax.set_xlabel(r'1. Hauptachse, $\tilde{a}_1$')
+    ax.set_ylabel(r'2. Hauptachse, $\tilde{a}_2$')
+    ax.set_aspect('equal')
+    st.pyplot(fig)
+
+
+m = st.slider("m", 0, m_all, 50)
+A_end = A[:,-m:]
+A_start = A[:,:m]
+
+plot_parliament(A_start, n, m)
+plot_parliament(A_end, n, m)

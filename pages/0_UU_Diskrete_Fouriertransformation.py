@@ -78,7 +78,7 @@ st.latex(r'''
   \end{align*}
 ''')
 
-st.page_link('pages/Experiment_Funklücken.py', label='Experiment mit einer dummy Sinus-Funktion und einer Lücke', icon=':material/arrow_right_alt:')
+st.page_link('pages/Experiment_Funklücken.py', label='Experiment mit einer dummy Sinus-Funktion und einer Lücke', icon='➡️')
 
 st.header('Grundlagen')
 

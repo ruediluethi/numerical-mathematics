@@ -45,7 +45,7 @@ for file in os.listdir(photoset_path):
 st.subheader('Extraktion')
 st.write(r'''
     Jedes Datenobjekt (also in diesem Falle jedes Bild) wird Pixel für Pixel vom RGB Farbraum 
-    in den HLS (**H**ue, **L**ightness, **S**aturation) Farbraum (Merkmalsraum/Feature Space $\mathbb{F} = \mathbb{R}^3$) transformiert.
+    in den HLS (**H**ue, **L**ightness, **S**aturation) Farbraum (**Merkmalsraum**/Feature Space $\mathbb{F} = \mathbb{R}^3$) transformiert.
 ''')
 
 img_path = random.choice(img_files_list)

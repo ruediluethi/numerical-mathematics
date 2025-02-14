@@ -108,10 +108,18 @@ st.write(df_color_list)
 def w_fun(L, y_cap_scale=1):
     return np.clip((np.sin(L * np.pi*2 - np.pi/2)/2 + 0.5) * y_cap_scale, 0.0, 1.0)
 
-#color_groups = [[], [], [], [], [], [], []]
+only_three = False
+
+# color_groups: list[list[str]] = []
+
+# if only_three:
+#     color_groups = [[], [], []]
+# else:
 color_groups = [[], [], [], 
                 [], [], [], 
                 [], [], []]
+
+
 
 fig, ax = plt.subplots()
 for i, row in df_color_list.iterrows():
@@ -121,16 +129,29 @@ for i, row in df_color_list.iterrows():
 
     # no color
     if row['name'] == '[No Color]' or row['name'] == 'Unknown':
-        st.write(row)
+        # st.write(row)
+        continue
 
     # transparent
     elif row['is_trans'] == 't':
-        color_groups[8].append(row['name'])
+        if not only_three:
+            color_groups[8].append(row['name'])
         ax.plot([h], [l], '.', color=(r, g, b), markersize=10, alpha=0.2)
         continue
     
     else:
         ax.plot([h], [l], '.', color=(r, g, b), markersize=10)
+
+        if only_three:
+            if l < 0.2:
+                ax.plot([h], [l], 'wx')
+                color_groups[0].append(row['name'])    
+            elif s < 0.2:
+                ax.plot([h], [l], 'k+')
+                color_groups[1].append(row['name'])
+            else:
+                color_groups[2].append(row['name'])
+            continue
 
         # black
         if l < 0.15:
@@ -342,7 +363,7 @@ for i, X_ in enumerate(X_list):
     ax.set_ylabel(y_axis[0:3])
     k = k_next
 
-ax.legend()
+# ax.legend()
 st.pyplot(fig)
 
 A = PCA(X)
@@ -354,7 +375,7 @@ for i, X_ in enumerate(X_list):
     ax.plot(A[k:k_next,0], A[k:k_next,1], '.', alpha=0.5, label=set_names[i])
     k = k_next
 
-ax.legend()
+# ax.legend()
 st.pyplot(fig)
 
 color_list = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple']

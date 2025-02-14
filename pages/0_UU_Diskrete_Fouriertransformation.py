@@ -9,6 +9,77 @@ import random
 
 st.title('Diskrete Fouriertransformation')
 
+
+st.header('Fourier-Reihen')
+
+st.subheader('Definition der trigonometrischen Reihe')
+
+st.write(r'''
+  Eine trigonometrische Reihe mit Periode $p > 0$ ist eine Funktion $s$ der Form
+''')
+
+st.latex(r'''
+  s(x) = \frac{a_0}{2} +
+	\sum_{k=1}^\infty a_k \cos\left( \frac{2\pi k x}{p} \right) +
+	\sum_{k=1}^\infty b_k \sin\left( \frac{2\pi k x}{p} \right)
+	= \sum_{k=-\infty}^\infty c_k e^{i \frac{2\pi k x}{p} }
+''')
+
+st.write(r'''
+  Mit dem Skalarprodukt $\left\langle f,g \right\rangle = \int_0^p f(x) \overline{g(x)} ~dx$
+  bildet die trigonometrische Reihe eine Orthonormalbasis für den Funktionenraum $\mathbb{C}^\infty$.
+  Denn für $k \neq l$ gilt
+''')
+
+st.latex(r'''
+  \left\langle
+	e^{i \frac{2\pi l x}{p}},
+	e^{i \frac{2\pi k x}{p}}
+	\right\rangle =
+	\int_0^p e^{i \frac{2\pi l x}{p}}
+	\overline{ e^{i \frac{2\pi k x}{p}} } ~dx
+	= \int_0^p e^{i \frac{2\pi (l-k) x}{p}} ~dx\\
+	= \int_0^p \cos\left( \frac{2\pi (l-k) x}{p} \right) +
+	i \sin\left( \frac{2\pi (l-k) x}{p} \right) ~dx\\
+	= \left( \sin\left( 2\pi(l-k) \right) - \sin\left( 0 \right) \right) +
+	i\left( -\cos\left( 2\pi(l-k) \right) - (-1)\cos\left( 0 \right) \right) \\
+	= \left( 0 - 0 \right) + i\left(-1 + 1\right) =  0
+''')
+
+
+st.subheader('Diskrete Fouriertransformation')
+
+st.write(r'''
+  Sei $f(t)$ das zu messende Signal, welches zu den diskreten Zeitpunkten $t_0, ..., t_n$ die Messwerte $f_0 = f(t_0), ..., f_n = f(t_n)$ annimmt.
+  Sei $f$ mit $f_0, ..., f_n$ ein Vektor mit den diskrete Messswerten zu den Zeitpunkten $t_0, ..., t_n$, 
+  welcher nun in den Funktionsraum mit Basis $s_k = \overline{e^{i \frac{2\pi k}{p}t}}$ transformiert wird.
+         
+  Es werden also die Koeffizienten $c_k$ gesucht, so dass $f = \sum_{k=0}^n c_k s_k$ gilt.
+''')
+
+st.latex(r'''
+  c_k
+  = \left\langle f, s_k \right\rangle
+  = \frac{1}{p} \int_0^p f(t) \cdot \overline{e^{i \frac{2\pi k}{p}t}} ~dt
+  \stackrel{\substack{\textrm{Diskret-}\\\textrm{isieren}}}{=}
+  \frac{1}{t_n - t_0} \sum_{l=0}^n f_l \cdot \overline{e^{i \frac{2\pi k }{t_n - t_0}t_l}}
+''')
+
+st.write(r'''
+  aus $c_k \in \mathbb{C}$ lassen sich $a_k, b_k \in \R$ bestimmen
+''')
+
+st.latex(r'''
+  \begin{align*}
+    a_k = 2~\textrm{Re}(c_k) &= \frac{2}{p} \int_0^p f(t) \cos\left( \frac{2\pi k t}{p} \right) ~dt
+    \stackrel{\substack{\textrm{Diskret-}\\\textrm{isieren}}}{=}
+    \frac{2}{t_n - t_0} \sum_{l=0}^n f_l \cdot \cos\left( \frac{2\pi k x_l}{t_n - t_0} \right)\\
+    b_k = -2~\textrm{Im}(c_k) &= -\frac{2}{p} \int_0^p f(x) \sin\left( \frac{2\pi k x}{p} \right) ~dx
+  \end{align*}
+''')
+
+st.page_link('pages/Experiment_DFT_mit_Lücke.py', label='Experiment mit einer dummy Sinus-Funktion und einer Lücke', icon='🧪')
+
 st.header('Grundlagen')
 
 st.subheader('Cauchy Folge')
@@ -259,6 +330,9 @@ ax.plot([u2_[0][0], u2_[0][0] + u1_[0][0]], [u2_[1][0], u2_[1][0] + u1_[1][0]], 
 
 ax.axis('equal')
 ax.legend()
+if st.button('Weiteres zufälliges Beispiel'):
+  nix = 0
+
 st.pyplot(fig)
 st.caption(r'''
   Beispiel im zweidimensionalen Raum einer Basistransformation des Vektors
@@ -267,6 +341,7 @@ st.caption(r'''
   in den Raum $U$ mit der Basis $u_1, u_2$ in einen Vektor $v_U = \left( \begin{array}{c} \alpha_1 \\ \alpha_2 \end{array} \right)
   = \alpha_1 u_1 + \alpha_2 u_2$.
 ''')
+  
 
 st.write(r'''
   **Orthonormalsystem**
@@ -310,74 +385,8 @@ st.latex(r'''
 
 
 
-st.header('Fourier-Reihen')
 
-st.subheader('Definition der trigonometrischen Reihe')
-
-st.write(r'''
-  Eine trigonometrische Reihe mit Periode $p > 0$ ist eine Funktion $s$ der Form
-''')
-
-st.latex(r'''
-  s(x) = \frac{a_0}{2} +
-	\sum_{k=1}^\infty a_k \cos\left( \frac{2\pi k x}{p} \right) +
-	\sum_{k=1}^\infty b_k \sin\left( \frac{2\pi k x}{p} \right)
-	= \sum_{k=-\infty}^\infty c_k e^{i \frac{2\pi k x}{p} }
-''')
-
-st.write(r'''
-  Mit dem Skalarprodukt $\left\langle f,g \right\rangle = \int_0^p f(x) \overline{g(x)} ~dx$
-  bildet die trigonometrische Reihe eine Orthonormalbasis für den Funktionenraum $\mathbb{C}^\infty$.
-  Denn für $k \neq l$ gilt
-''')
-
-st.latex(r'''
-  \left\langle
-	e^{i \frac{2\pi l x}{p}},
-	e^{i \frac{2\pi k x}{p}}
-	\right\rangle =
-	\int_0^p e^{i \frac{2\pi l x}{p}}
-	\overline{ e^{i \frac{2\pi k x}{p}} } ~dx
-	= \int_0^p e^{i \frac{2\pi (l-k) x}{p}} ~dx\\
-	= \int_0^p \cos\left( \frac{2\pi (l-k) x}{p} \right) +
-	i \sin\left( \frac{2\pi (l-k) x}{p} \right) ~dx\\
-	= \left( \sin\left( 2\pi(l-k) \right) - \sin\left( 0 \right) \right) +
-	i\left( -\cos\left( 2\pi(l-k) \right) - (-1)\cos\left( 0 \right) \right) \\
-	= \left( 0 - 0 \right) + i\left(-1 + 1\right) =  0
-''')
-
-
-st.subheader('Diskrete Fouriertransformation')
-
-st.write(r'''
-  Sei $f(t)$ das zu messende Signal, welches zu den diskreten Zeitpunkten $t_0, ..., t_n$ die Messwerte $f_0 = f(t_0), ..., f_n = f(t_n)$ annimmt.
-  Sei $f$ mit $f_0, ..., f_n$ ein Vektor mit den diskrete Messswerten zu den Zeitpunkten $t_0, ..., t_n$, 
-  welcher nun in den Funktionsraum mit Basis $s_k = \overline{e^{i \frac{2\pi k}{p}t}}$ transformiert wird.
-         
-  Es werden also die Koeffizienten $c_k$ gesucht, so dass $f = \sum_{k=0}^n c_k s_k$ gilt.
-''')
-
-st.latex(r'''
-  c_k
-  = \left\langle f, s_k \right\rangle
-  = \frac{1}{p} \int_0^p f(t) \cdot \overline{e^{i \frac{2\pi k}{p}t}} ~dt
-  \stackrel{\substack{\textrm{Diskret-}\\\textrm{isieren}}}{=}
-  \frac{1}{t_n - t_0} \sum_{l=0}^n f_l \cdot \overline{e^{i \frac{2\pi k }{t_n - t_0}t_l}}
-''')
-
-st.write(r'''
-  aus $c_k \in \mathbb{C}$ lassen sich $a_k, b_k \in \R$ bestimmen
-''')
-
-st.latex(r'''
-  \begin{align*}
-    a_k = 2~\textrm{Re}(c_k) &= \frac{2}{p} \int_0^p f(t) \cos\left( \frac{2\pi k t}{p} \right) ~dt
-    \stackrel{\substack{\textrm{Diskret-}\\\textrm{isieren}}}{=}
-    \frac{2}{t_n - t_0} \sum_{l=0}^n f_l \cdot \cos\left( \frac{2\pi k x_l}{t_n - t_0} \right)\\
-    b_k = -2~\textrm{Im}(c_k) &= -\frac{2}{p} \int_0^p f(x) \sin\left( \frac{2\pi k x}{p} \right) ~dx
-  \end{align*}
-''')
-
+st.stop()
 
 def discrete_fourier_transformation(f, t):
   n = f.size
@@ -475,9 +484,9 @@ for index, row in df.iterrows():
 # ax.plot(bmX)
 # st.pyplot(fig)
 
-# start_i = st.slider('start_i', 0, bmX.size, 16337, 1)
-start_i = 16330
-n_part = st.slider('Anzahl Punkte für die Transformation', 1, 3000, 1250, 1)
+start_i = st.slider('start_i', 0, bmX.size, 16337, 1)
+# start_i = 16330
+n_part = st.slider('Anzahl Punkte für die Transformation', 1, 3000, 1000, 1)
 gap = st.slider('Größe der Lücke', 0, 1000, 200, 1)
 gap_pos = st.slider('Position der Lücke', 0.0, 1.0, 2/3)
 
@@ -523,14 +532,14 @@ max_i = 10+np.argmax(frequencies[10:-1,1])
 display_range = min(20, max_i)
 
 fig_freq, ax_freq = plt.subplots()
+fig_freq_, ax_freq_ = plt.subplots()
+
 ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
         frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), label=r'Lücke', color='tab:blue')
-# ax.plot(frequencies[max_i-display_range:max_i+display_range,0], 
-#         frequencies[max_i-display_range:max_i+display_range,2], label=r'Real')
-# ax.plot(frequencies[max_i-display_range:max_i+display_range,0], 
-#         frequencies[max_i-display_range:max_i+display_range,3], label=r'Imag')
-# ax.legend()
-# st.pyplot(fig)
+
+ax_freq_.plot(frequencies[:,0], 
+        frequencies[:,1]/np.amax(frequencies[:,1]), label=r'Lücke', color='tab:blue')
+
 
 
 
@@ -552,10 +561,14 @@ ax_raw[1].plot(t_part, sig_windowed_last_value, color='tab:orange')
 frequencies = fast_fourier_transformation(sig_windowed_last_value, t_part[-1] - t_part[0])
 ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
         frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), label=r'letzter Wert (fft)', color='tab:orange', alpha=0.5)
+ax_freq_.plot(frequencies[:,0], 
+        frequencies[:,1]/np.amax(frequencies[:,1]), label=r'letzter Wert (fft)', color='tab:orange', alpha=0.5)
 
-frequencies = discrete_fourier_transformation(sig_windowed_last_value, t_part)
-ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
-        frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), ':', label=r'letzter Wert (diskret)', color='tab:orange')
+
+
+# frequencies = discrete_fourier_transformation(sig_windowed_last_value, t_part)
+# ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
+#         frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), ':', label=r'letzter Wert (diskret)', color='tab:orange')
 
 sig_windowed_zeros = hamming_window(signal, t_part)
 sig_windowed_zeros[end_i-start_i:start_i2-start_i] = np.zeros((start_i2-end_i)).reshape((start_i2-end_i,1))
@@ -564,10 +577,13 @@ ax_raw[2].plot(t_part, sig_windowed_zeros, color='tab:green')
 frequencies = fast_fourier_transformation(sig_windowed_zeros, t_part[-1] - t_part[0])
 ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
         frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), label=r'mit Nullen (fft)', color='tab:green', alpha=0.5)
+ax_freq_.plot(frequencies[:,0], 
+        frequencies[:,1]/np.amax(frequencies[:,1]), label=r'mit Nullen (fft)', color='tab:green', alpha=0.5)
 
-frequencies = discrete_fourier_transformation(sig_windowed_zeros, t_part)
-ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
-        frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), ':', label=r'mit Nullen (diskret)', color='tab:green')
+
+# frequencies = discrete_fourier_transformation(sig_windowed_zeros, t_part)
+# ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
+#         frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), ':', label=r'mit Nullen (diskret)', color='tab:green')
 
 
 ax_freq.legend()
@@ -589,7 +605,9 @@ st.caption('''
   Die Amplitude wurde durch den jeweiligen Maximalwert normiert.
 ''')
 
-exit()
+st.pyplot(fig_freq_)
+
+st.stop()
 
 
 # def polynomial_interpolation(points):

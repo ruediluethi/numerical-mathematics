@@ -62,14 +62,14 @@ def fill_bm_with_last_value(time: np.ndarray, bmx: np.ndarray, bmy: np.ndarray):
     return time_filled, x_filled, y_filled
 
 def discrete_fourier_transformation(f, t):
-  st.write(f.shape, t.shape)
+  # st.write(f.shape, t.shape)
   n = f.size
 
   A = np.zeros((n,n))
   B = np.zeros((n,n))
 
   p = t[-1] - t[0]
-  st.write(p)
+  # st.write(p)
 
   for k in range(0,n):
     for i in range(0,n):
@@ -90,13 +90,13 @@ def discrete_fourier_transformation(f, t):
     frequencies[i][2] = a[i][0]
     frequencies[i][3] = b[i][0]
 
-  return frequencies[10:,]
+  return frequencies[1:,]
 
 def fast_fourier_transformation(f, duration):
   n = f.size
 
-  st.write(f.shape)
-  st.write(duration)
+  # st.write(f.shape)
+  # st.write(duration)
 
   fft = np.fft.fft(f.flatten())
 
@@ -112,7 +112,7 @@ def fast_fourier_transformation(f, duration):
     frequencies[i][2] = a
     frequencies[i][3] = b
 
-  return frequencies[10:,]
+  return frequencies[1:,]
 
 def von_hann_window(f, t):
   n = f.size
@@ -134,18 +134,20 @@ def von_hann_window(f, t):
 st.title('Diskrete Fouriertransformation mit Lücken')
 
 st.write('''
-  Durch Datenlücken in einem über Funk übertragenen Sensorsignal können Artefakte in der Frequenzanalyse entstehen.
-  Hier wird anhand eines Beispieles untersucht, wie sich unterschiedliche Strategien zur Behandlung von Datenlücken auf die Frequenzanalyse auswirken.
+  Die diskrete Fouriertransformation ermöglicht eine Transformation ins Frequenzspektrum ohne die Notwendigkeit einer kontinuierlichen Abtastung.
+  So müssen auch Datenlücken nicht zwangsläufig aufgefüllt werden, um eine Frequenzanalyse durchzuführen.
+  Anhand eines Beispiels wird untersucht, wie sich unterschiedliche Strategien zur Behandlung von Datenlücken auf die Frequenzanalyse auswirken.
 ''')
 
 
-example = st.radio('Datenbeispiel', ['mit Sensordaten', 'mit überlagerten Sinus-Testdaten'], horizontal=True)
+# example = st.radio('Datenbeispiel', ['mit Sensordaten', 'mit überlagerten Sinus-Testdaten'], horizontal=True)
+example = 'mit überlagerten Sinus-Testdaten'
 
 n_part = st.slider('Anzahl Datenpunkte für die Frequenzanalyse', 1, 3000, 1000, 1)
 
 if example == 'mit überlagerten Sinus-Testdaten':
 
-  n_peak = st.slider('Anzahl Peaks', 1, 10, 5, 1)
+  n_peak = st.slider('Anzahl Frequenzen im Signal', 1, 10, 5, 1)
 
   t = np.linspace(0.0, n_part/2500, n_part)*1000
 
@@ -158,15 +160,19 @@ if example == 'mit überlagerten Sinus-Testdaten':
 
   gap_start_i = int((n_part-gap_n)*gap_pos)
 
-  with_gaps_bm = np.concatenate((bm[0:gap_start_i], bm[gap_start_i+gap_n:]))
-  with_gaps_t = np.concatenate((t[0:gap_start_i], t[gap_start_i+gap_n:]))
+  with_gaps_bm = np.concatenate((bm[0:gap_start_i], bm[gap_start_i+gap_n:-1]))
+  with_gaps_t = np.concatenate((t[0:gap_start_i], t[gap_start_i+gap_n:-1]))
 
 
-  gaps_t, gaps_bm, gaps_bmy = fill_bm_with_last_value(with_gaps_t, with_gaps_bm, np.zeros(with_gaps_bm.size))
-  
+  # gaps_t, gaps_bm, gaps_bmy = fill_bm_with_last_value(with_gaps_t, with_gaps_bm, np.zeros(with_gaps_bm.size))
+  gaps_t = np.copy(t)
+  gaps_bm = np.copy(bm)
+
+  gaps_bm[gap_start_i:gap_start_i+gap_n] = np.zeros(gap_n)
+
   # gaps_bm = np.copy(bm)
 
-  clean_t = t
+  clean_t = np.copy(t)
   clean_bm = np.copy(bm)
 
   # with_gaps_t = np.copy(gaps_t)
@@ -177,38 +183,56 @@ if example == 'mit überlagerten Sinus-Testdaten':
   clean_container = st.container()
 
 else:
-  raw_file_ = os.path.join('data', 'demo_sensordata2.csv')
+  raw_file_ = os.path.join('data', 'demo_sensordata.csv')
   df_ = pd.read_csv(raw_file_, skiprows=[1])
   df_.describe()
 
-  st.write(df_.head())
+  # st.write(df_.head())
 
   t_with_gaps = df_['time'].to_numpy()
   t_with_gaps = t_with_gaps - t_with_gaps[0]
-  bmX_with_gaps = df_['Bm X'].to_numpy()
-  bmY_with_gaps = df_['Bm Y'].to_numpy()
+  bmX_with_gaps = df_['24'].to_numpy()
+  bmY_with_gaps = df_['25'].to_numpy()
+
+  start_gaps_t = st.slider('Zeitpunkt des zu Analysierenden Zeitintervals in ms', 0.0, t_with_gaps[-1]/1000, 2.5)*1000
+  gap_n = st.slider('Größe der Lücke', 0, n_part, int(n_part*0.1), 1)
+  gap_pos = st.slider('Position der Lücke', 0.0, 1.0, 2/3)
+
+  gaps_container = st.container()
+  start_gaps_index = np.where(t_with_gaps > start_gaps_t)[0][0]
+  # start_gaps_index = 16330
+
+  gap_start_i = start_gaps_index+int((n_part-gap_n)*gap_pos)
+
+  t_with_gaps = np.concatenate((t_with_gaps[:gap_start_i], t_with_gaps[gap_start_i+gap_n:]))
+  bmX_with_gaps = np.concatenate((bmX_with_gaps[:gap_start_i], bmX_with_gaps[gap_start_i+gap_n:]))
+  bmY_with_gaps = np.concatenate((bmY_with_gaps[:gap_start_i], bmY_with_gaps[gap_start_i+gap_n:]))
+
   bm_with_gaps = np.sqrt(bmX_with_gaps**2 + bmY_with_gaps**2)
+
+  
 
   t_, bmX_, bmY_ = fill_bm_with_last_value(t_with_gaps, bmX_with_gaps, bmY_with_gaps)
   bm_ = np.sqrt(bmX_**2 + bmY_**2)
   
   plot_container = st.container()
-  start_gaps_t = st.slider('Zeitpunkt eines Funklücken behafteten Zeitintervals in ms', 0.0, t_[-1]/1000, 2.5)*1000
+  # start_gaps_t = st.slider('Zeitpunkt eines Funklücken behafteten Zeitintervals in ms', 0.0, t_[-1]/1000, 2.5)*1000
   gaps_container = st.container()
-  start_gaps_index = np.where(t_ > start_gaps_t)[0][0]
+  # start_gaps_index = np.where(t_ > start_gaps_t)[0][0]
+  # st.write(start_gaps_index)
   start_clean_t = st.slider('Zeitpunkt eines Zeitintervals ohne Lücken in s', 0.0, t_[-1]/1000, 3.2)*1000
   clean_container = st.container()
   start_clean_index = np.where(t_ > start_clean_t)[0][0]
 
   gaps_t = t_[start_gaps_index:start_gaps_index+n_part]
-  gaps_bm = bm_[start_gaps_index:start_gaps_index+n_part]
+  gaps_bm = bmX_[start_gaps_index:start_gaps_index+n_part]
 
   clean_t = t_[start_clean_index:start_clean_index+n_part]
-  clean_bm = bm_[start_clean_index:start_clean_index+n_part]
+  clean_bm = bmX_[start_clean_index:start_clean_index+n_part]
 
   gaps_indices_with_gaps = np.where((gaps_t[0] <= t_with_gaps) & (t_with_gaps <= gaps_t[-1]))[0].flatten()
   with_gaps_t = t_with_gaps[gaps_indices_with_gaps]
-  with_gaps_bm = bm_with_gaps[gaps_indices_with_gaps]
+  with_gaps_bm = bmX_with_gaps[gaps_indices_with_gaps]
 
 
 
@@ -223,40 +247,51 @@ else:
   plot_container.pyplot(fig)
   plot_container.caption('Gesamtsignal mit den ausgewählten Zeitfenstern')
 
+
 gaps_t = gaps_t - gaps_t[0]
 clean_t = clean_t - clean_t[0]
 with_gaps_t = with_gaps_t - with_gaps_t[0]
 
-fig, ax = plt.subplots(figsize=(8,2))
-ax.plot(gaps_t, gaps_bm, color='lightgray', label='Zeitfenster mit Lücke')
+fig, ax = plt.subplots(figsize=(8,4))
+ax.plot(gaps_t, gaps_bm, color='lightgray')
+clean_bm = von_hann_window(clean_bm, clean_t)
+ax.plot(clean_t, clean_bm, color=clean_color, label='ohne Lücke')
 gaps_bm = von_hann_window(gaps_bm, gaps_t)
-ax.plot(gaps_t, gaps_bm, color=gaps_color, label='Zeitfenster mit Lücke')
+ax.plot(gaps_t, gaps_bm, color=gaps_color, label='mit Lücke')
+ax.legend()
 
 ax.set_xlabel('Zeit in ms')
 with_gaps_bm = von_hann_window(with_gaps_bm, with_gaps_t)
-ax.plot(with_gaps_t, with_gaps_bm, '-', color=discrete_color, label='Zeitfenster mit Lücke')
+# ax.plot(with_gaps_t, with_gaps_bm, '.', color=discrete_color, label='Zeitfenster mit Lücke')
 
 gaps_container.pyplot(fig)
 gaps_container.caption('''
-  Zeitfenster mit Lücke. Um die Signaldaten durch eine FFT weiterverarbeiten zu können, wurden die Lücken mit dem jeweils letzten Wert vor der der Lücke aufgefüllt.
-  Im Hintergrund grau dargestellt sind die Originaldaten, im Vordergrund das Signal durch eine von-Hann-Fensterfunktion weiterverarbeitet.
+  Zeitlicher Verlauf des Beispielsignals.
+  Im Hintergrund grau dargestellt sind die Originaldaten.
+  Für die Transformationen wurde das Signal durch eine von-Hann-Fensterfunktion weiterverarbeitet.
 ''')
 
-fig, ax = plt.subplots(figsize=(8,2))
-ax.plot(clean_t, clean_bm, color='lightgray', label='Zeitfenster ohne Lücke')
-clean_bm = von_hann_window(clean_bm, clean_t)
-ax.plot(clean_t, clean_bm, color=clean_color, label='Zeitfenster ohne Lücke')
-ax.set_xlabel('Zeit in ms')
-clean_container.pyplot(fig)
-clean_container.caption('Zeitfenster ohne Lücke mit gleicher Weiterverarbeitung durch eine von-Hann-Fensterfunktion wie das Zeitfenster mit Lücke.')
+st.write('Für die FFT des Signals mit Lücke wurden die fehlenden Datenpunkten mit Nullen aufgefüllt.')
+st.page_link('pages/0_UU_Diskrete_Fouriertransformation.py', label='Hier gehts zur Theorie der diskreten Fouriertransformation', icon=':material/function:')
 
-st.write('''
-  Vergleicht man nun die Frequenzanalyse der beiden Zeitfenster, so wird deutlich, dass die Lücke im Zeitfenster zu einer Verzerrung des Frequenzspektrums führt.      
-''')
+
+# fig, ax = plt.subplots(figsize=(8,2))
+# ax.plot(clean_t, clean_bm, color='lightgray', label='Zeitfenster ohne Lücke')
+# clean_bm = von_hann_window(clean_bm, clean_t)
+# ax.plot(clean_t, clean_bm, color=clean_color, label='Zeitfenster ohne Lücke')
+# ax.set_xlabel('Zeit in ms')
+# clean_container.pyplot(fig)
+# clean_container.caption('Zeitfenster ohne Lücke mit gleicher Weiterverarbeitung durch eine von-Hann-Fensterfunktion wie das Zeitfenster mit Lücke.')
+
+# st.write('''
+#   Vergleicht man nun die Frequenzanalyse der beiden Zeitfenster, so wird deutlich, dass die Lücke im Zeitfenster zu einer Verzerrung des Frequenzspektrums führt.      
+# ''')
+
+
 
 gaps_freq = fast_fourier_transformation(gaps_bm, gaps_t[-1] - gaps_t[0])
 clean_freq = fast_fourier_transformation(clean_bm, clean_t[-1] - clean_t[0])
-with_gaps_freq = discrete_fourier_transformation(with_gaps_bm, gaps_t)
+with_gaps_freq = discrete_fourier_transformation(with_gaps_bm, with_gaps_t)
 
 
 fig, ax = plt.subplots(figsize=(8,4))
@@ -264,23 +299,25 @@ ax.plot(gaps_freq[:,0], gaps_freq[:,1]/np.max(gaps_freq[:,1]), gaps_color, label
 ax.plot(clean_freq[:,0], clean_freq[:,1]/np.max(clean_freq[:,1]), clean_color, label='FFT ohne Lücke')
 ax.plot(with_gaps_freq[:,0], with_gaps_freq[:,1]/np.max(with_gaps_freq[:,1]), discrete_color, label='DFT mit Lücke')
 ax.set_xlabel('Frequenz in Hz')
-ax.set_ylabel('Amplitude')
+ax.set_ylabel('Normierte Amplitude')
 ax.legend()
 st.pyplot(fig)
-st.caption('Resultat der FFT für die beiden Zeitfenster im Vergleich. Gut zu Erkennen sind die Artefakte durch die Funklücken im ersten Zeitfenster.')
-
-
-
-
-
-st.write('''
-  Wird auf dem Lücken behafteten Signal die diskrete Fouriertransformation durchgeführt, 
-  so ist das Resultat nahezu identisch mit dem Resultat der FFT auf dem Signal ohne Lücke.
+st.caption('''
+  Resultat der drei Transformationen im Vergleich. 
+  Die Amplituden wurden jeweils durch den maximalen Wert normiert.
 ''')
-st.page_link('pages/0_UU_Diskrete_Fouriertransformation.py', label='Hier gehts zur Theorie der diskreten Fouriertransformation', icon=':material/function:')
+
+
+
+
+
+# st.write('''
+#   Wird auf dem Lücken behafteten Signal die diskrete Fouriertransformation durchgeführt, 
+#   so ist das Resultat nahezu identisch mit dem Resultat der FFT auf dem Signal ohne Lücke.
+# ''')
 
 max_i = np.argmax(gaps_freq[:,1])
-display_range = min(100, max_i)
+display_range = min(50, max_i)
 
 fig_freq, ax_freq = plt.subplots(figsize=(8,4))
 ax_freq.plot(with_gaps_freq[max_i-display_range:max_i+display_range,0], 
@@ -296,7 +333,7 @@ ax_freq.set_ylabel('Normierte Amplitude')
 ax_freq.legend()
 
 st.pyplot(fig_freq)
-st.caption('Ausschnitt des Frequenzspektrums normiert zur jeweiligen maximalen Apmlitude der drei unterschiedlichen Strategien.')
+st.caption('Ausschnitt des Frequenzspektrums zur jeweils höchsten Amplitude der drei unterschiedlichen Strategien.')
 
 
 st.stop()
@@ -325,8 +362,6 @@ st.stop()
 # fig, ax = plt.subplots()
 # ax.plot(bmX)
 # st.pyplot(fig)
-
-st.write(t.shape)
 
 start_i = st.slider('start_i', 0, t.size, int(t.size/2), 1)
 

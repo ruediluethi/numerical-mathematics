@@ -138,6 +138,7 @@ st.write('''
   So müssen auch Datenlücken nicht zwangsläufig aufgefüllt werden, um eine Frequenzanalyse durchzuführen.
   Anhand eines Beispiels wird untersucht, wie sich unterschiedliche Strategien zur Behandlung von Datenlücken auf die Frequenzanalyse auswirken.
 ''')
+st.page_link('pages/0_UU_Diskrete_Fouriertransformation.py', label='Hier gehts zur Theorie der diskreten Fouriertransformation', icon='🤓')
 
 
 # example = st.radio('Datenbeispiel', ['mit Sensordaten', 'mit überlagerten Sinus-Testdaten'], horizontal=True)
@@ -272,7 +273,6 @@ gaps_container.caption('''
 ''')
 
 st.write('Für die FFT des Signals mit Lücke wurden die fehlenden Datenpunkten mit Nullen aufgefüllt.')
-st.page_link('pages/0_UU_Diskrete_Fouriertransformation.py', label='Hier gehts zur Theorie der diskreten Fouriertransformation', icon=':material/function:')
 
 
 # fig, ax = plt.subplots(figsize=(8,2))

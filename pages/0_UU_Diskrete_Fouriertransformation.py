@@ -78,7 +78,7 @@ st.latex(r'''
   \end{align*}
 ''')
 
-st.page_link('pages/Experiment_Funklücken.py', label='Experiment mit einer dummy Sinus-Funktion und einer Lücke', icon='➡️')
+st.page_link('pages/Experiment_Funklücken.py', label='Experiment mit einer dummy Sinus-Funktion und einer Lücke', icon='🧪')
 
 st.header('Grundlagen')
 
@@ -330,6 +330,9 @@ ax.plot([u2_[0][0], u2_[0][0] + u1_[0][0]], [u2_[1][0], u2_[1][0] + u1_[1][0]], 
 
 ax.axis('equal')
 ax.legend()
+if st.button('Weiteres zufälliges Beispiel'):
+  nix = 0
+
 st.pyplot(fig)
 st.caption(r'''
   Beispiel im zweidimensionalen Raum einer Basistransformation des Vektors
@@ -338,9 +341,7 @@ st.caption(r'''
   in den Raum $U$ mit der Basis $u_1, u_2$ in einen Vektor $v_U = \left( \begin{array}{c} \alpha_1 \\ \alpha_2 \end{array} \right)
   = \alpha_1 u_1 + \alpha_2 u_2$.
 ''')
-if st.button('Weiteres zufälliges Beispiel'):
-    # st.rerun()
-    nix = 0
+  
 
 st.write(r'''
   **Orthonormalsystem**

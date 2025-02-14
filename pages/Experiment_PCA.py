@@ -25,6 +25,7 @@ st.write('''
     Datenquelle: https://www.bundestag.de/parlament/plenum/abstimmung/liste     
     Es wurden alle namentlichen Abstimmungen des 20. Bundestages bis zum 5. Juli 2024 verwendet.
 ''')
+# https://de.wikipedia.org/wiki/Bruch_der_Ampelkoalition_in_Deutschland_2024
 
 # fetch and cache data
 @st.cache_data
@@ -118,7 +119,7 @@ st.latex(r'''
 
 
 
-def plot_parliament(A, n, m):
+def plot_parliament(A, n, m, parties):
 
 
 
@@ -175,19 +176,125 @@ def plot_parliament(A, n, m):
             legend.append(party)
             label = party
 
-        ax.plot(A_d[i,0], A_d[i,1], '.', color=party_colors[party], alpha=0.4, label=label)
+        ax.plot(A_d[i,0], A_d[i,1], '.', color=party_colors[party], alpha=0.4, label=label, markersize=10)
 
     # ax.plot(A_[:,0], A_[:,1], 'k.')
     ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0), frameon=False)
     ax.set_xlabel(r'1. Hauptachse, $\tilde{a}_1$')
     ax.set_ylabel(r'2. Hauptachse, $\tilde{a}_2$')
-    ax.set_aspect('equal')
+    # ax.set_aspect('equal')
+    # st.pyplot(fig)
+
+    return A_d, fig, ax
+
+
+def k_means(data, n_clusters, iterations=10, random_init=False, init_centroids=None, xaxis_plot_index=0, yaxis_plot_index=1):
+    color_list = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple']
+
+    dim = data.shape[0] # dimension
+    n_points = data.shape[1] # number of data points
+
+    if init_centroids is not None:
+        centroids = init_centroids
+    elif random_init:
+        # Initialize centroids randomly
+        centroids = np.random.rand(dim, n_clusters) * np.amax(data, axis=1).reshape(dim,1)
+
+    else:
+        # initialize centroids on a diagonal through the n-dimensional space
+        centroids = np.zeros((dim, n_clusters))
+        for i in range(0, n_clusters):
+            centroids[:,i] = np.amin(data, axis=1) + (np.amax(data, axis=1) - np.amin(data, axis=1)) * (i+1)/(n_clusters+1)
+
+    # centroids = np.zeros((dim, n_clusters))
+    # for i in range(0, n_clusters):
+    #     centroids[:,i] = np.ones(dim) * np.amax(data)*i/n_clusters + np.random.rand()
+
+    fig, ax = plt.subplots()
+    for j in range(0, iterations):
+        
+        new_centroids = np.zeros((dim, n_clusters))
+        points_count_per_cluster = np.zeros(n_clusters)
+        indices_per_cluster = []
+        for k in range(0, n_clusters):
+            indices_per_cluster.append(np.array([], dtype=int))
+
+
+        for i in range(0, n_points):
+            distances = np.zeros(n_clusters)
+            for k in range(0, n_clusters):
+                distances[k] = np.linalg.norm(data[:,i] - centroids[:,k])
+
+            cluster_index = np.argmin(distances)
+            points_count_per_cluster[cluster_index] += 1
+            new_centroids[:,cluster_index] += data[:,i]
+
+            indices_per_cluster[cluster_index] = np.append(indices_per_cluster[cluster_index], i)
+
+            # centroids[i,:] = centroids[i,:] * np.amax(data[i,:])
+
+        for k in range(0, n_clusters):
+
+            points_per_cluster = data[:,indices_per_cluster[k]]
+            if j == iterations-1:
+                ax.plot(points_per_cluster[xaxis_plot_index,:], points_per_cluster[yaxis_plot_index,:], '.', color=color_list[k%len(color_list)], alpha=0.3)
+            # centroids[:,k] = new_centroids[:,k] / points_count_per_cluster[k]
+            old_centroid = np.copy(centroids[:,k])
+            # centroids[:,k] = np.median(points_per_cluster, axis=1)
+            # centroids[:,k] = np.quantile(points_per_cluster, 0.4, axis=1)
+            centroids[:,k] = np.mean(points_per_cluster, axis=1)
+            if j == iterations-1:
+                ax.plot([old_centroid[xaxis_plot_index], centroids[xaxis_plot_index,k]], [old_centroid[yaxis_plot_index], centroids[yaxis_plot_index,k]], '--', color=color_list[k%len(color_list)])
+                ax.plot(centroids[xaxis_plot_index,k], centroids[yaxis_plot_index,k], 'X', color='white')
+                ax.plot(centroids[xaxis_plot_index,k], centroids[yaxis_plot_index,k], 'x', label=f'Cluster {k+1}', color=color_list[k%len(color_list)])
+
+    points_near_center = []
+    all_distances_to_center = []
+    for k in range(0, n_clusters):
+        points_per_cluster = data[:,indices_per_cluster[k]]
+        distances_to_center = np.linalg.norm(points_per_cluster - centroids[:,k].reshape(dim,1), axis=0)
+        all_distances_to_center.append(distances_to_center)
+
+        if points_per_cluster.size == 0:
+            continue    
+        below_threshold = np.where(distances_to_center < np.quantile(distances_to_center, 1.0))
+        # ax.plot(points_per_cluster[xaxis_plot_index,below_threshold], points_per_cluster[yaxis_plot_index,below_threshold], '.', color=color_list[k%len(color_list)], alpha=0.5)
+        points_near_center.append(np.copy(indices_per_cluster[k][below_threshold]))
+
+    ax.legend()
     st.pyplot(fig)
+    st.caption('k-means Visualisierung der Clusterbildung (es werden jeweils nur 2 Dimensionen für den Plot verwendet)')
 
+    return points_near_center, indices_per_cluster, all_distances_to_center
 
-m = st.slider("m", 0, m_all, 50)
+m = st.slider("m", 0, m_all, 62)
 A_end = A[:,-m:]
 A_start = A[:,:m]
 
-plot_parliament(A_start, n, m)
-plot_parliament(A_end, n, m)
+A_start_d, fig, ax = plot_parliament(A_start, n, m, parties)
+st.pyplot(fig)
+
+A_min = np.amin(A_start_d, axis=0)
+A_max = np.amax(A_start_d, axis=0)
+init_centroids = np.array([[A_max[0], 0, A_min[0], 0],
+                           [0, A_max[1], 0, A_min[0]]], dtype=float)
+
+k_means(A_start_d.T, 4, init_centroids=init_centroids, iterations=10)
+
+A_end_d, fig, ax = plot_parliament(A_end, n, m, parties)
+st.pyplot(fig)
+
+A_min = np.amin(A_start_d, axis=0)
+A_max = np.amax(A_start_d, axis=0)
+init_centroids = np.array([[A_max[0], 0, A_min[0], 0],
+                           [0, A_max[1], 0, A_min[0]]], dtype=float)
+
+k_means(A_end_d.T, 4, init_centroids=init_centroids, iterations=10)
+
+
+
+
+
+
+
+

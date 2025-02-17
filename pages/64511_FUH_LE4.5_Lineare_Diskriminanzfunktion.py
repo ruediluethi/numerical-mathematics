@@ -30,88 +30,187 @@ st.write(r'''
 st.write('Datenquelle: https://www.kaggle.com/datasets/rtatman/lego-database')
 
 df_themes = pd.read_csv('data/lego/themes.csv')
-df_themes = df_themes.set_index('id')
+# df_themes = df_themes.set_index('id')
+# st.write(df_themes)
+df_themes['root'] = np.nan
+
+theme_ids = df_themes['id'].to_numpy(dtype=int)
+
+# search recursively for root theme
+for i, row in df_themes.iterrows():
+
+    parent_id = row['parent_id']
+    if pd.isna(parent_id):
+        df_themes.at[i, 'root'] = row['id']
+        continue
+
+    while not pd.isna(parent_id):
+        parent = df_themes[df_themes['id'] == parent_id].iloc[0]
+        parent_id = parent['parent_id']
+
+    df_themes.at[i, 'root'] = parent['id']
+
+
+# st.write(df_themes)
+
+themes_root = df_themes[df_themes['parent_id'].isnull()]
+themes_root['count'] = 0
+# st.write(themes_root)
+
 
 df_sets = pd.read_csv('data/lego/sets.csv')
-df_sets_count = pd.DataFrame(df_sets.groupby('theme_id')['num_parts'].count().sort_values(ascending=False))
-# st.write(df_sets_count.join(df_themes))
+# group sets by theme and count sets in num_parts
+df_sets_count = pd.DataFrame(df_sets.groupby('theme_id')['num_parts'].count().sort_values(ascending=False)).reset_index()
 
+df_themes = df_themes.rename(columns={'id': 'theme_id'})
+
+# st.write(df_themes)
+# st.subheader('sets count')
+# st.write(df_sets_count)
+# st.write(pd.merge(df_sets_count, df_themes, on='theme_id'))
+
+# search for root theme and counts all sets of a root theme
+for i, row in df_sets_count.iterrows():
+    theme = df_themes[df_themes['theme_id'] == row['theme_id']].iloc[0]
+    # st.write(theme)
+    root_index = themes_root[themes_root['id'] == theme['root']].index
+    themes_root.loc[root_index, 'count'] += row['num_parts']
+    # st.write(themes_root.loc[root_index])
+    # st.write('...')
+
+with st.expander('root themes with sets count'):
+    st.write(themes_root.sort_values('count', ascending=False))
+
+# root_sets_count = pd.DataFrame(df_sets_count.groupby('root')['num_parts'].count().sort_values(ascending=False)).join(df_themes)
+# st.write(root_sets_count)
+
+# for i, row in df_sets_count.iterrows():
+#     parent_root = themes_root[themes_root['id'] == i]
+#     if parent.shape[0] == 0:
+#         # df_sets_count = df_sets_count.drop(i)
+#         st.write(row, parent)
+
+# get part list for all sets
 df_inventories = pd.read_csv('data/lego/inventories.csv')
 df_parts = pd.read_csv('data/lego/parts.csv')
 df_inv_parts = pd.read_csv('data/lego/inventory_parts.csv')
 
+# get colors
 df_color_list = pd.read_csv('data/lego/colors.csv')
 df_color_list = df_color_list.rename(columns={'id': 'color_id'})
-st.write(df_color_list)
+# st.write(df_color_list)
 
+only_three = False
+# color_groups: list[list[str]] = []
+# if only_three:
+#     color_groups = [[], [], []]
+# else:
+color_groups: list[list[str]] = [[], [], [], [], [], [], [], [], []]
+
+# and group the colors into groups by there hue (and lightness/saturation)
 def w_fun(L, y_cap_scale=1):
     return np.clip((np.sin(L * np.pi*2 - np.pi/2)/2 + 0.5) * y_cap_scale, 0.0, 1.0)
-
 fig, ax = plt.subplots()
 for i, row in df_color_list.iterrows():
     r, g, b = mcolors.hex2color('#'+row['rgb'])
     h, l, s = colorsys.rgb_to_hls(r, g, b)
     #ax.plot([h], [s**2*w_fun(l)], 'o', color=(r, g, b))
 
-    ax.plot([h], [l], '.', color=(r, g, b), markersize=10)
+    # no color
+    if row['name'] == '[No Color]' or row['name'] == 'Unknown':
+        # st.write(row)
+        continue
 
-    if l < 0.15:
-        ax.plot([h], [l], 'wx')
-        st.write(row['name'])
-    elif l > 0.9:
-        #ax.plot([h], [l], 'X', color=(r, g, b), markersize=10)
-        ax.plot([h], [l], 'kx')
-    elif s < 0.15:
-        ax.plot([h], [l], 'k+')
-
-    elif h < 0.05:
-        ax.plot([h], [l], '.', color=(r, g, b), markersize=10)
-    elif h < 0.1:
-        ax.plot([h], [l], '.', color=(r, g, b), markersize=20)
+    # transparent
+    elif row['is_trans'] == 't':
+        if not only_three:
+            color_groups[8].append(row['name'])
+        ax.plot([h], [l], '.', color=(r, g, b), markersize=10, alpha=0.2)
+        continue
     
+    else:
+        ax.plot([h], [l], '.', color=(r, g, b), markersize=10)
 
-st.pyplot(fig)
+        if only_three:
+            if l < 0.2:
+                ax.plot([h], [l], 'wx')
+                color_groups[0].append(row['name'])    
+            elif s < 0.2:
+                ax.plot([h], [l], 'k+')
+                color_groups[1].append(row['name'])
+            else:
+                color_groups[2].append(row['name'])
+            continue
 
-st.stop()
+        # black
+        if l < 0.15:
+            ax.plot([h], [l], 'wx')
+            color_groups[0].append(row['name'])
 
-gray_colors = df_color_list[(df_color_list['name'].str.contains('Black')) |
-                            (df_color_list['name'].str.contains('Gray')) |
-                            (df_color_list['name'].str.contains('Opaque'))
-                        ]['name'].to_list()
-red_colors = df_color_list[
-                            (df_color_list['name'].str.contains('Red')) | 
-                            (df_color_list['name'].str.contains('Purple')) | 
-                            (df_color_list['name'].str.contains('Pink')) |
-                            (df_color_list['name'].str.contains('Lavender')) |
-                            (df_color_list['name'].str.contains('Magenta')) |
-                            (df_color_list['name'].str.contains('Orange')) |
-                            (df_color_list['name'].str.contains('Yellow'))
-                        ]['name'].to_list()
+        # white
+        elif l > 0.9:
+            #ax.plot([h], [l], 'X', color=(r, g, b), markersize=10)
+            ax.plot([h], [l], 'kx')
+            color_groups[1].append(row['name'])
 
-# red_colors = df_color_list[
-#                             (df_color_list['name'].str.contains('Blue')) | 
-#                             (df_color_list['name'].str.contains('Azure'))
-#                         ]['name'].to_list()
+        # gray
+        elif s < 0.18:
+            ax.plot([h], [l], 'k+')
+            color_groups[2].append(row['name'])
 
-green_colors = df_color_list[
-                            (df_color_list['name'].str.contains('Green')) | 
-                            (df_color_list['name'].str.contains('Lime'))
-                        ]['name'].to_list()
+        # colored
+        else:
+            # ax.plot([h], [l], '.', color=(r, g, b), markersize=20)
+            # color_groups[3].append(row['name'])
 
+            #red
+            if h < 0.05:
+                ax.plot([h], [l], '.', color=(r, g, b), markersize=10)
+                color_groups[3].append(row['name'])
 
-def get_X(theme_name, min_parts=100):
+            # yellow
+            elif h < 0.17:
+                ax.plot([h], [l], '.', color=(r, g, b), markersize=10)
+                color_groups[4].append(row['name'])
 
-    st.header(theme_name)
+            # purple
+            elif h > 0.75:
+                ax.plot([h], [l], '.', color=(r, g, b), markersize=10)
+                color_groups[5].append(row['name'])
+
+            # green
+            elif h < 0.5:
+                ax.plot([h], [l], '.', color=(r, g, b), markersize=10)
+                color_groups[6].append(row['name'])
+
+            # blue
+            else:
+                ax.plot([h], [l], '.', color=(r, g, b), markersize=20)
+                color_groups[7].append(row['name'])
+            # elif h < 0.1:
+            #     ax.plot([h], [l], '.', color=(r, g, b), markersize=20)
+    
+with st.expander('color groups (not used)'):
+    st.pyplot(fig)
+
+color_list = df_color_list['name'].to_list()
+# st.write(len(color_list))
+
+@st.cache_data
+def get_X(root_index, min_parts=100):
 
     all_set_nums = []
     all_set_names = []
 
-    color_list = gray_colors + red_colors
+    # color_list = gray_colors + red_colors
+    
     X = np.ones((0, len(color_list)))
 
-
     # st.write(df_themes[df_themes['name'].str.contains(theme_name, case=False)])
-    for theme_id, row in df_themes[df_themes['name'].str.contains(theme_name, case=False)].iterrows():
+    # for theme_id, row in df_themes[df_themes['name'].str.contains(theme_name, case=False)].iterrows():
+    for i, row in df_themes[(df_themes['root'] == root_index) | (df_themes['theme_id'] == root_index)].iterrows():
+        theme_id = row['theme_id']
+        
         # st.subheader(theme_id)
         df_theme_sets = df_sets[df_sets['theme_id'] == theme_id]
         df_theme_sets = pd.merge(df_theme_sets, df_inventories, on='set_num')
@@ -121,75 +220,162 @@ def get_X(theme_name, min_parts=100):
             df_parts_set = df_inv_parts[df_inv_parts['inventory_id'] == row['id']]
             df_colors = pd.DataFrame(df_parts_set.groupby('color_id')['quantity'].sum()).reset_index()
             df_colors = pd.merge(df_colors, df_color_list, on='color_id')
+            
             if df_colors.shape[0] > 0:
-                # st.write(f'{row['set_num']}: {row['name']} (id: {row['id']})')
+                parts_count = df_colors['quantity'].sum()
+                # st.write(f"{row['set_num']}: {row['name']} (id: {row['id']}), {parts_count} parts")
+                if parts_count < min_parts:# and parts_count < 100:
+                    continue
+
                 # st.write(df_colors)
+                # st.write(df_colors)
+
+                fig, ax = plt.subplots()
+                for i, row_ in df_colors.iterrows():
+                    r, g, b = mcolors.hex2color('#'+row_['rgb'])
+                    h, l, s = colorsys.rgb_to_hls(r, g, b)
+                    #ax.plot([h], [s**2*w_fun(l)], 'o', color=(r, g, b))
+
+                    ax.plot([h], [l], '.', color=(r, g, b), markersize=1+row_['quantity']/parts_count*50)
+
+                    
+
+                # st.pyplot(fig)
 
                 X = np.vstack((X, np.zeros((1, len(color_list)))))
                 all_set_nums.append(row['set_num'])
                 all_set_names.append(row['name'])
 
                 for i, row_col in df_colors.iterrows():
-                    if row_col['name'] not in color_list:
-                        color_list.append(row_col['name'])
-                        X = np.hstack((X, np.zeros((len(all_set_nums), 1))))
+                    # if row_col['name'] not in color_list:
+                    #     color_list.append(row_col['name'])
+                    #     X = np.hstack((X, np.zeros((len(all_set_nums), 1))))
 
                     X[len(all_set_nums)-1, color_list.index(row_col['name'])] = row_col['quantity']
 
+    parts_count = X.sum(axis=1)[:, np.newaxis]
+    X = X / parts_count
                 
+    # st.write(X.shape)
+    return X
 
+    X_ = np.zeros((X.shape[0], len(color_groups)))
+    for i in range(len(color_groups)):
+        for j in range(len(color_groups[i])):
+            X_[:,i] += X[:,color_list.index(color_groups[i][j])]
+
+    st.write(X_.shape)
 
     # st.write(X)
     # st.write(X.shape)
     # st.write(color_list)
-    col_names = np.array(color_list)
-    col_count = np.sum(X, axis=0)
-    col_sort = np.argsort(col_count)[::-1]
 
-    
+    # col_names = np.array(color_list)
+    # col_count = np.sum(X, axis=0)
+    # col_sort = np.argsort(col_count)[::-1]
 
-    st.write(pd.DataFrame({
-        'color': col_names[col_sort],
-        'count': col_count[col_sort]
-    }).head(20))
+    # st.write(pd.DataFrame({
+    #     'color': col_names[col_sort],
+    #     'count': col_count[col_sort]
+    # }).head(20))
 
-    # st.write(np.array(color_list)[col_sort])
-    # st.write(col_count[col_sort])
+    return X_
 
-    # st.write(all_set_nums)
-    # st.write(all_set_names)
+plot_colors_A = ['red', 'purple', 'orange']
+plot_colors_B = ['blue', 'green', 'cyan']
+set_names_A = st.multiselect('Sets group A', themes_root.sort_values('count', ascending=False)['name'].to_list(), default=['Friends', 'Freestyle'])
+set_names_B = st.multiselect('Sets group B', themes_root.sort_values('count', ascending=False)['name'].to_list(), default=['Ninjago', 'Bionicle'])
 
-    parts_count = X.sum(axis=1)[:, np.newaxis]
-    X = X / parts_count
+X_list_A = []
+for set_name in set_names_A:
+    root = themes_root[themes_root['name'] == set_name].iloc[0]
+    X_list_A.append(get_X(root['root'], min_parts=50))
+X_A = np.zeros((0, len(color_list)))
+for X_ in X_list_A:
+    X_A = np.vstack((X_A, X_))
 
-    # st.write(col_names[0:len(gray_colors)])
-    # st.write(col_names[len(gray_colors):len(gray_colors) + len(red_colors)])
+X_list_B = []
+for set_name in set_names_B:
+    root = themes_root[themes_root['name'] == set_name].iloc[0]
+    X_list_B.append(get_X(root['root'], min_parts=50))
+X_B = np.zeros((0, len(color_list)))
+for X_ in X_list_B:
+    X_B = np.vstack((X_B, X_))
 
-    X_reduced = np.zeros((X.shape[0], 3))
-    X_reduced[:,0] = X[:,0:len(gray_colors)].sum(axis=1).flatten()
-    X_reduced[:,1] = X[:,len(gray_colors):len(gray_colors) + len(red_colors)].sum(axis=1).flatten()
-    X_reduced[:,2] = X[:,len(gray_colors) + len(red_colors):len(gray_colors) + len(red_colors) + len(green_colors)].sum(axis=1).flatten()
+with st.expander('simple plotting with one color on x and y-axis'):
+    x_axis = st.selectbox('X-Achse', color_list, index=color_list.index('Black'))
+    y_axis = st.selectbox('Y-Achse', color_list, index=color_list.index('White'))
 
-    count_filter = np.argwhere(parts_count > min_parts)[:,0]
+    fig, ax = plt.subplots()
+    k = 0
+    for i, X_ in enumerate(X_list_A):
+        k_next = k + X_.shape[0]
+        ax.plot(X_A[k:k_next,color_list.index(x_axis)], 
+                X_A[k:k_next,color_list.index(y_axis)], '.', alpha=0.5, label=set_names_A[i], color=plot_colors_A[i])
+        k = k_next
+    k = 0
+    for i, X_ in enumerate(X_list_B):
+        k_next = k + X_.shape[0]
+        ax.plot(X_B[k:k_next,color_list.index(x_axis)], 
+                X_B[k:k_next,color_list.index(y_axis)], '.', alpha=0.5, label=set_names_B[i], color=plot_colors_B[i])
+        k = k_next
 
-    X_reduced = X_reduced[count_filter,:]
-    # X_reduced = X_reduced / X_reduced.sum(axis=1)[:, np.newaxis]
+    ax.set_xlabel(x_axis)
+    ax.set_ylabel(y_axis)
 
-    return X_reduced
-
-    col_min = X_reduced.min(axis=0)
-    col_max = X_reduced.max(axis=0)
-
-    return (X_reduced - col_min) / (col_max - col_min)
+    ax.legend()
+    st.pyplot(fig)
 
 
-X_friends = get_X('Friends', min_parts=50)
-X_starwars = get_X('Star Wars', min_parts=200)
+def PCA(A):
+    n = A.shape[0]
+    d = A.shape[1]
+    ATA = 1/n * A.T @ A
+    lambdas, V = np.linalg.eig(ATA)
 
-st.write(X_friends.shape)
-st.write(X_starwars.shape)
+    # st.write(lambdas)
 
-def classify(X_a, X_b, label_a=None, label_b=None):
+    d = 3
+    Sigma_ = np.zeros((n,d))
+    Sigma_[:d,:d] = np.diag(np.sqrt(lambdas[:d]))
+
+    # project the data onto the new 2D basis
+    A_d = np.zeros((n,d))
+    for i in range(0,d):
+        A_d[:,i] = A @ V[:,i]
+
+    return A_d
+
+X = np.vstack((X_A, X_B))
+A = PCA(X)
+A_A = np.zeros((X_A.shape[0], A.shape[1]))
+A_B = np.zeros((X_B.shape[0], A.shape[1]))
+
+with st.expander('PCA 2D projection'):
+    fig, ax = plt.subplots()
+    k = 0
+    for i, X_ in enumerate(X_list_A):
+        k_next = k + X_.shape[0]
+        ax.plot(A[k:k_next,0], A[k:k_next,1], 'o', alpha=0.5, label=set_names_A[i], color=plot_colors_A[i])
+        A_A[k:k_next,:] = A[k:k_next,:]
+        k = k_next
+    k_B = 0
+    for i, X_ in enumerate(X_list_B):
+        k_next = k + X_.shape[0]
+        k_B_next = k_B + X_.shape[0]
+        ax.plot(A[k:k_next,0], A[k:k_next,1], 'o', alpha=0.5, label=set_names_B[i], color=plot_colors_B[i])
+        A_B[k_B:k_B_next,:] = A[k:k_next,:]
+        k = k_next
+        k_B = k_B_next
+
+    # ax.plot(A_A[:,0], A_A[:,1], '.', label='Group A', color='red')
+    # ax.plot(A_B[:,0], A_B[:,1], '.', label='Group B', color='blue')
+
+    ax.legend()
+    st.pyplot(fig)
+
+
+def classify(X_a, X_b):
     n = X_a.shape[0] + X_b.shape[0]
     X = np.ones((n, 3))
     X[0:X_a.shape[0],1:3] = X_a
@@ -202,24 +388,27 @@ def classify(X_a, X_b, label_a=None, label_b=None):
     w = pseudo_inv @ y
 
     fig, ax = plt.subplots()
-    ax.plot(X[:,1][y==1], X[:,2][y==1], 'wo', markeredgecolor='k', label='Friends')
-    ax.plot(X[:,1][y==-1], X[:,2][y==-1], 'k.')
+    ax.plot(X[:,1][y==1], X[:,2][y==1], 'wo', markeredgecolor='k', label='Group A')
+    ax.plot(X[:,1][y==-1], X[:,2][y==-1], 'k.', label='Group B')
 
     x = np.linspace(X[:,1].min(), X[:,1].max(), 1000)
     border = (-w[0]-w[1]*x) / w[2]
     border_below = np.argwhere((X[:,2].min() < border) & (border < X[:,2].max()))
     ax.plot(x[border_below], border[border_below], 'k--', label='decision boundary')
     
-    if label_a is not None:
-        ax.set_xlabel(label_a)
-    if label_b is not None:
-        ax.set_ylabel(label_b)
+    X_x_range = np.amax(X[:,1]) - np.amin(X[:,1])
+    ax.set_xlim([np.amin(X[:,1]) - X_x_range*0.05, np.amax(X[:,1]) + X_x_range*0.05])
+    X_y_range = np.amax(X[:,2]) - np.amin(X[:,2])
+    ax.set_ylim([np.amin(X[:,2]) - X_y_range*0.05, np.amax(X[:,2]) + X_y_range*0.05])
 
-    ax.set_aspect('equal')
-
+    ax.legend()
     st.pyplot(fig)
 
-def classify_poly(X_a, X_b, label_a=None, label_b=None):
+classify(A_A[:,0:2], A_B[:,0:2])
+
+
+
+def classify_poly(X_a, X_b):
     n = X_a.shape[0] + X_b.shape[0]
     X = np.ones((n, 3))
     X[0:X_a.shape[0],1:3] = X_a
@@ -240,8 +429,8 @@ def classify_poly(X_a, X_b, label_a=None, label_b=None):
     w = pseudo_inv @ y
 
     fig, ax = plt.subplots()
-    ax.plot(X[:,1][y==1], X[:,2][y==1], 'wo', markeredgecolor='k', label='ok')
-    ax.plot(X[:,1][y==-1], X[:,2][y==-1], 'k.', label='nok')
+    ax.plot(X[:,1][y==1], X[:,2][y==1], 'wo', markeredgecolor='k', label='Group A')
+    ax.plot(X[:,1][y==-1], X[:,2][y==-1], 'k.', label='Group B')
 
     x = np.linspace(X[:,1].min(), X[:,1].max(), 1000)
 
@@ -249,60 +438,40 @@ def classify_poly(X_a, X_b, label_a=None, label_b=None):
     b = w[3]
     a = w[4]
 
-    ax.plot(x, (-b + np.sqrt(b**2 - 4*a*c)) /(2*a), 'r--', label='decision boundary')
-    ax.plot(x, (-b - np.sqrt(b**2 - 4*a*c)) /(2*a), 'b--', label='decision boundary')
+    ax.plot(x, (-b + np.sqrt(b**2 - 4*a*c)) /(2*a), 'k--', label='decision boundary')
+    ax.plot(x, (-b - np.sqrt(b**2 - 4*a*c)) /(2*a), 'k--')
 
-    # border = (-w[0]-w[1]*x) / w[2]
-    # border_below = np.argwhere((X[:,2].min() < border) & (border < X[:,2].max()))
-    # ax.plot(x[border_below], border[border_below], 'k--', label='decision boundary')
-    
-    if label_a is not None:
-        ax.set_xlabel(label_a)
-    if label_b is not None:
-        ax.set_ylabel(label_b)
-
-    res = 300
-    J = np.zeros((res, res))
-    for i, x1 in enumerate(np.linspace(X[:,1].min(), X[:,1].max(), res)):
-        for j, x2 in enumerate(np.linspace(X[:,2].min(), X[:,2].max(), res)):
-            J[j,i] = w[0] + w[1]*x1 + w[2]*x1**2 + w[3]*x2 + w[4]*x2**2
-    
-    J[J < 0] = J[J < 0] / np.min(J)
-    J[J > 0] = J[J > 0] / np.max(J)
-    J = (1 - J)**10
-
-    # ax.set_aspect('equal')
-
+    X_x_range = np.amax(X2[:,1]) - np.amin(X2[:,1])
+    ax.set_xlim([np.amin(X2[:,1]) - X_x_range*0.05, np.amax(X2[:,1]) + X_x_range*0.05])
+    X_y_range = np.amax(X2[:,3]) - np.amin(X2[:,3])
+    ax.set_ylim([np.amin(X2[:,3]) - X_y_range*0.05, np.amax(X2[:,3]) + X_y_range*0.05])
+    ax.legend()
     st.pyplot(fig)
 
-classify_poly(X_friends[:,[1,0]], X_starwars[:,[1,0]], 'red', 'gray')
-classify_poly(X_friends[:,[0,2]], X_starwars[:,[0,2]], 'gray', 'green')
-classify_poly(X_friends[:,1:3], X_starwars[:,1:3], 'red', 'green')
+classify_poly(A_A[:,0:2], A_B[:,0:2])
 
-def classify_3d(X_a, X_b, label_a=None, label_b=None, label_c=None):
+
+
+def classify_3d(X_a, X_b):
     n = X_a.shape[0] + X_b.shape[0]
     X = np.ones((n, 4))
-    X[0:X_a.shape[0],1:4] = X_a
+    X[:X_a.shape[0],1:4] = X_a
     X[X_a.shape[0]:,1:4] = X_b
 
     y = np.ones(n)
     y[X_a.shape[0]:] = -1
 
-    st.write(X)
-    st.write(X.T @ X)
-
-    
 
     fig = go.Figure()
 
     fig.add_trace(go.Scatter3d(
-        x=X_a[:,0], y=X_a[:,1], z=X_a[:,2],
+        x=X[:X_a.shape[0],1], y=X[:X_a.shape[0],2], z=X[:X_a.shape[0],3],
         mode='markers',
         marker=dict(size=5, color='red'),
         name='Group A'
     ))
     fig.add_trace(go.Scatter3d(
-        x=X_b[:,0], y=X_b[:,1], z=X_b[:,2],
+        x=X[X_a.shape[0]:,1], y=X[X_a.shape[0]:,2], z=X[X_a.shape[0]:,3],
         mode='markers',
         marker=dict(size=5, color='blue'),
         name='Group B'
@@ -310,110 +479,38 @@ def classify_3d(X_a, X_b, label_a=None, label_b=None, label_c=None):
 
     pseudo_inv = linalg.inv(X.T @ X) @ X.T
     w = pseudo_inv @ y
-    st.write(w)
+    # st.write(w)
 
-    m = 100
-    x_1 = np.linspace(X[:,1].min(), X[:,1].max(), m)
-    x_2 = np.linspace(X[:,2].min(), X[:,2].max(), m)
-    x_3 = np.zeros((m,m))
+    m = 10
+    x = np.linspace(np.amin(X[:,1]), np.amax(X[:,1]), m)
+    y = np.linspace(np.amin(X[:,2]), np.amax(X[:,2]), m)
+    z = np.zeros((m,m))
     for i in range(m):
         for j in range(m):
-            x_3[i,j] = (-w[0] - w[1]*x_1[i] - w[2]*x_2[j]) / w[3]
-            if x_3[i,j] < X[:,3].min() or x_3[i,j] > X[:,3].max():
-                x_3[i,j] = np.nan
+            z[j,i] = (-w[0] - w[1]*x[i] - w[2]*y[j]) / w[3]
+            if z[j,i] < np.amin(X[:,3]) or z[j,i] > np.amax(X[:,3]):
+                z[j,i] = np.nan
 
     fig.add_trace(go.Surface(
-        x=x_1, y=x_2, z=x_3
+        x=x, y=y, z=z
     ))
     st.plotly_chart(fig)
 
-    # st.plotly_chart(px.scatter_3d(pd.DataFrame({
-    #     'x': X[:,1],
-    #     'y': X[:,2],
-    #     'z': X[:,3],
-    #     'c': y
-    # }), x='x', y='y', z='z', color='c'))
+
+classify_3d(A_A[:,[0,2,1]], A_B[:,[0,2,1]])
 
 
-classify_3d(X_friends, X_starwars)
-
-n = 100
-X_test_a = np.zeros((n,3)) + np.random.rand(n,3) * 2
-n = 50
-X_test_b = np.ones((n,3)) + np.random.rand(n,3) * 1
-
-classify_3d(X_test_a, X_test_b)
-
-st.header('dummy example')
+# fig = go.Figure()
 
 
-df = pd.DataFrame({ 
-    'age': [23, 17, 43, 68, 32],
-    'max_speed': [180, 240, 246, 173, 110],
-    'risk': [1, 1, 1, -1, -1]
-})
-
-st.write(df)
-
-age = df['age'].to_numpy()
-max_speed = df['max_speed'].to_numpy()
-y = df['risk'].to_numpy()
-
-n = y.size
-
-st.subheader('Zweidimensional')
-
-X = np.ones((n,3))
-X[:,1] = age
-X[:,2] = max_speed
-
-st.write(X)
-
-pseudo_inv = linalg.inv(X.T @ X) @ X.T
-
-st.write(pseudo_inv)
-
-w = pseudo_inv @ y
-
-
-
-st.write(w)
-
-st.write(y - X @ w)
-
-fig, ax = plt.subplots()
-ax.plot(age[y==1], max_speed[y==1], 'ro', label='high risk')
-ax.plot(age[y==-1], max_speed[y==-1], 'go', label='low rist')
-
-ax.plot(age, (-w[0]-w[1]*age)/w[2], 'b-', label='decision boundary')
-
-st.pyplot(fig)
-
-
-st.subheader('Eindimensional')
-
-n = 100
-
-n_high = int(n*0.25 + random.randint(0, int(n*0.5)))
-n_low = n - n_high
-
-st.write(n, n_high, n_low, n_high + n_low)
-
-high = np.random.normal(loc=3, scale=0.5, size=n_high)
-low = np.random.normal(loc=1, scale=0.5, size=n_low)
-
-y = np.concatenate((np.ones(n_high), -np.ones(n_low)))
-X = np.ones((n,2))
-X[:,1] = np.concatenate((high, low))
-
-pseudo_inv = linalg.inv(X.T @ X) @ X.T
-w = pseudo_inv @ y
-
-fig, ax = plt.subplots()
-ax.plot(np.zeros(n_high), X[:,1][y==1], 'ro', label='high risk')
-ax.plot(np.zeros(n_low), X[:,1][y==-1], 'g.', label='low risk')
-
-ax.plot([-1, 1], np.ones(2) * -w[0]/w[1], 'b-', label='decision boundary')
-
-
-st.pyplot(fig)
+# k = 0
+# for i, X_ in enumerate(X_list_A):
+#     k_next = k + X_.shape[0]
+#     fig.add_trace(go.Scatter3d(
+#         x=A[k:k_next,0], y=A[k:k_next,1], z=A[k:k_next,2],
+#         mode='markers',
+#         marker=dict(size=5, color=plot_colors[i]),
+#         name='Group A'
+#     ))
+#     k = k_next
+# st.plotly_chart(fig)

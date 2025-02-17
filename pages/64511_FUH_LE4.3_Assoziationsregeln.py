@@ -13,22 +13,19 @@ import colorsys
 import pandas as pd
 from scipy.signal import find_peaks
 
-st.error('Begriffshäufigkeit (term frequency)')
-st.error('Dokumentenhäufigkeit (document frequency)')
-st.error('Inverse Dokumentenhäufigkeit (inverse document frequency)')
-
 st.title('Assoziationsregeln')
 st.write('''
-    Anhand des im vorderen Schritt berechneten Histogramms wird zu jedem Bild ermittelt ob eine der 6 Grundfarben Rot, Gelb, Grün, Cyan, Blau oder Magenta in dem Bild vorkommt.
-    Die in dem Bild enthalten Farben werden als Merkmalsliste gespeichert.  
+    Anhand des im vorderen Schritt berechneten Histogramms wird zu jedem Bild ermittelt 
+    ob eine der 6 Grundfarben (Indexbegriffe $t_i$) Rot, Gelb, Grün, Cyan, Blau oder Magenta in dem Bild (Dokument $D$) vorkommt.
+    Die in dem Bild enthalten Farben werden als Merkmalsliste gespeichert.
 ''')
+
 
 COLOR_WHEEL_NAMES = ['Rot', 'Orange', 'Gelb', 'Limette', 'Grün', 'Türkis', 'Cyan', 'Azurblau', 'Blau', 'Lila', 'Magenta', 'Purpur']
 COLOR_VALUES = ['#FE2712', '#FC600A', '#FB9902', '#FCCC1A', '#FEFE33', '#B2D732', '#66B032', '#347C98', '#0247FE', '#4424D6', '#8601AF', '#C21460']
 
 
 COLOR_WHEEL_NAMES = ['Rot', 'Gelb', 'Grün', 'Cyan', 'Blau', 'Magenta']
-
 
 photoset_path = os.path.join('data', 'photoset')
 
@@ -51,11 +48,18 @@ img_files_list = df['file'].to_numpy()
 bar_width = 1.0/n_bins
 hue = np.linspace(0.0, 1.0, n_bins+1)[0:-1]
 n_cols = len(COLOR_WHEEL_NAMES)
+n_docs = img_files_list.size
 
+st.write('''
+    Zusätzlich wird als Begriffshäufigkeit $tf_{i,D}$ die Summe der Bins im entsprechenden Farbbereich berechnet.
+''')
+tf = np.zeros((n_docs, n_cols))
 
 data = []
 show_all_hist_plots = True
 show_all_images = st.checkbox('Alle Bilder anzeigen')
+preview_files = []
+preview_indices = []
 for i, img_file in enumerate(img_files_list):
 
     show_images = True
@@ -66,6 +70,7 @@ for i, img_file in enumerate(img_files_list):
         col1, col2, col3, col4, col5 = st.columns(5)
         cols = [col1, col2, col3, col4, col5]
         rand_hist_i = random.randrange(5)
+        # rand_hist_i = 0
         hist_container = st.container()
 
     show_hist_plot = False
@@ -84,6 +89,9 @@ for i, img_file in enumerate(img_files_list):
     H_hist = H_hist.reshape((n_bins,1))
 
     if show_hist_plot:
+        preview_files.append(img_file)
+        preview_indices.append(i)
+
         fig = plt.figure(figsize=(12, 4))
         gs = fig.add_gridspec(1,3)
         ax_img = fig.add_subplot(gs[0,0])
@@ -92,10 +100,12 @@ for i, img_file in enumerate(img_files_list):
         image = Image.open(img_file)
         ax_img.imshow(image)
 
-    peaks, props = find_peaks(H_hist.flatten(), distance=n_bins/n_cols/2, prominence=np.amax(H_hist)*0.01)
+    peaks, props = find_peaks(H_hist.flatten(), distance=n_bins/n_cols/2, prominence=np.amax(H_hist)*0.05)
     
 
-    col_borders = np.linspace(-1.0/n_cols/2, 1.0 + 1.0/n_cols/2, n_cols+2)
+    # col_borders = np.linspace(-1.0/n_cols/2, 1.0 + 1.0/n_cols/2, n_cols+2)
+    col_borders = np.array([0.0, 0.083, 0.2, 0.42, 0.58, 0.75, 0.92, 1.0])
+    # st.write(col_borders)
     col_names = []
     col_indices = []
     caption = ''
@@ -106,6 +116,10 @@ for i, img_file in enumerate(img_files_list):
         #         ax_hist.plot([c, c], [0, np.amax(H_hist)], 'k-')
         if k > 0:
             c_prev = col_borders[k-1]
+
+            hue_indices = np.where((c_prev < hue) & (hue <= c))[0].flatten()
+            tf[i, (k-1)%n_cols] += np.sum(H_hist[hue_indices])
+
             r, g, b = colorsys.hls_to_rgb((c_prev + c)/2, 0.5, 1.0)
             if show_hist_plot:
                 ax_hist.fill([max(0.0, c_prev), max(0.0, c_prev), min(1.0, c), min(1.0, c)], 
@@ -115,6 +129,7 @@ for i, img_file in enumerate(img_files_list):
                 if c_prev < hue[p+1] and hue[p+1] <= c:
                     col_names.append(COLOR_WHEEL_NAMES[(k-1)%n_cols])
                     col_indices.append((k-1)%n_cols)
+                    
                     
                     caption = f'{caption}<div style="float:left; width:15px; height:15px; margin: 5px 5px 0px 0px; background:rgb({r*255}, {g*255}, {b*255});"></div>'
 
@@ -131,9 +146,9 @@ for i, img_file in enumerate(img_files_list):
 
     if show_hist_plot:
         hist_container.pyplot(fig)
-        if i <= 5:
-            if not st.checkbox('Mehr Histogramme anzeigen'):
-                show_all_hist_plots = False
+        # if i <= 5:
+            # if not st.checkbox('Mehr Histogramme anzeigen'):
+                # show_all_hist_plots = False
 
 
     # st.write(col_names)
@@ -143,10 +158,35 @@ for i, img_file in enumerate(img_files_list):
     if show_images:
         crnt_column.write(caption, unsafe_allow_html=True)
 
+st.header('Gewichtung')
 
-st.write('''
-    Die vorkommenden Farben und deren Kombinationen werden gezählt.      
+st.subheader('Begriffshäufigkeit *(term frequency)* $tf_{t_i,D}$')
+st.write(r'''
+    Die Häufigkeit einer Farbe/Begriffes $t_i$ in einem Bild/Dokument $D$.     
 ''')
+
+with st.expander('Beispiele'):
+    for k, img_file in enumerate(preview_files):
+
+        fig = plt.figure(figsize=(12, 4))
+        gs = fig.add_gridspec(1,3)
+        ax_img = fig.add_subplot(gs[0,0])
+        ax_hist = fig.add_subplot(gs[0, 1:3])
+
+        image = Image.open(img_file)
+        ax_img.imshow(image)
+
+        
+        # fig, ax = plt.subplots(figsize=(9, 3))
+        for i in range(0, n_cols): 
+            red, green, blue = colorsys.hls_to_rgb(i/len(COLOR_WHEEL_NAMES), 0.5, 1.0)
+            ax_hist.bar(i+1, tf[preview_indices[k],i], width=0.8, color=(red, green, blue))
+        st.pyplot(fig)
+
+
+
+# st.write(COLOR_WHEEL_NAMES)
+# st.table(tf.head(10))
 
 # data = [
 #   ['A', 'B', 'E'],
@@ -221,15 +261,75 @@ def count_a_in_b(a, b):
 all_count_summaries = []
 all_combinations = []    
 
+st.subheader('Dokumentenhäufigkeit *(document frequency)* $df_{t_i}$')
+st.write('Anzahl der Bilder/Dokumente, die eine Farbe/Begriff $t_i$ enthalten.')
 base_colors = count_a_in_b(lk, data)
-st.caption('''
-    Welche Farbe kommt wie oft in den Bildern vor?       
+# st.write(base_colors)
+
+st.subheader('Inverse Dokumentenhäufigkeit *(inverse document frequency)* $idf_{t_i}$')
+st.latex(r'idf_{t_i} = log \frac{|D|}{df_{t_i}}')
+
+idf = np.log(n_docs/np.array(base_colors))
+
+fig, ax = plt.subplots(figsize=(9, 3))
+for i, idf_ti in enumerate(idf):
+    red, green, blue = colorsys.hls_to_rgb(i/len(COLOR_WHEEL_NAMES), 0.5, 1.0)
+    ax.bar(i+1, idf_ti, width=0.8, color=(red, green, blue))
+st.pyplot(fig)
+
+
+st.subheader('TF-IDF Gewichtung')
+st.latex(r'w_i = tf_{t_i,D} \cdot idf_{t_i}')
+st.write('''
+    * Gewicht wird höher, wenn die Farbe/Begriff selten in einem Foto/Dokument vorkommt.
+    * Gewicht wird am niedrigsten, wenn die Farbe/Begriff fast in jedem Foto/Dokument vorkommt.
 ''')
+
+for k, img_file in enumerate(preview_files):
+
+    fig = plt.figure(figsize=(12, 4))
+    gs = fig.add_gridspec(1,3)
+    ax_img = fig.add_subplot(gs[0,0])
+    ax_hist = fig.add_subplot(gs[0, 1:3])
+
+    image = Image.open(img_file)
+    ax_img.imshow(image)
+
+    
+    # fig, ax = plt.subplots(figsize=(9, 3))
+    for i in range(0, n_cols): 
+        red, green, blue = colorsys.hls_to_rgb(i/len(COLOR_WHEEL_NAMES), 0.3, 1.0)
+        label = None
+        if i == 0:
+            label = r'$tf_{t_i, D}$'
+        ax_hist.bar(i+1, tf[preview_indices[k],i], width=0.2, color=(red, green, blue), label=label)
+        red, green, blue = colorsys.hls_to_rgb(i/len(COLOR_WHEEL_NAMES), 0.5, 1.0)
+        if i == 0:
+            label = r'$w_i$'
+        ax_hist.bar(i+1+0.4, tf[preview_indices[k],i] * idf[i], width=0.6, color=(red, green, blue), label=label)
+    ax_hist.legend()
+    st.pyplot(fig)
+
+
+st.subheader('BoVW - Vektor')
+
+st.write('''
+    Sei $v_k = (..., w_i, ... )$ der BoVW-Vektor, 
+    so kann die Ähnlichkeit zwischen zwei Bildern $D_a$ und $D_b$ durch
+    das normierte Skalarprodukt bestimmt werden
+''')
+st.latex(r'''
+    BoVW(v_a, v_b) = \frac{v_a \cdot v_b}{||v_a|| \cdot ||v_b||}
+''')
+
+
+st.header('Apriori-Algorithmus')
+
 all_count_summaries.append(base_colors)
 all_combinations.append(lk)
 
 
-for k in range(0, 3):
+for k in range(0, 2):
     
     lk_1 = []
     n = len(lk)

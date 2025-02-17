@@ -68,9 +68,9 @@ def get_data(data_dir):
 
     read_progress.empty()
 
-    return A, n, m, parties
+    return A, n, m, parties, p_names
 
-A, n, m_all, parties = get_data(data_dir)
+A, n, m_all, parties, p_names = get_data(data_dir)
 
 
 
@@ -158,7 +158,7 @@ def plot_parliament(A, n, m, parties):
     # st.write(U, S, Vh)
 
     # use only two eigenvalues and eigenvectors for 2D plot
-    d = 2
+    d = 3
     Sigma_ = np.zeros((n,d))
     Sigma_[:d,:d] = np.diag(np.sqrt(lambdas[:d]))
 
@@ -267,9 +267,20 @@ def k_means(data, n_clusters, iterations=10, random_init=False, init_centroids=N
 
     return points_near_center, indices_per_cluster, all_distances_to_center
 
+A_all_d, fig, ax = plot_parliament(A, n, m_all, parties)
+st.write(parties)
+st.write(A_all_d)
+st.pyplot(fig)
+
+
+
+
+
+
 m = st.slider("m", 0, m_all, 62)
 A_end = A[:,-m:]
 A_start = A[:,:m]
+
 
 A_start_d, fig, ax = plot_parliament(A_start, n, m, parties)
 st.pyplot(fig)
@@ -279,7 +290,7 @@ A_max = np.amax(A_start_d, axis=0)
 init_centroids = np.array([[A_max[0], 0, A_min[0], 0],
                            [0, A_max[1], 0, A_min[0]]], dtype=float)
 
-k_means(A_start_d.T, 4, init_centroids=init_centroids, iterations=10)
+# k_means(A_start_d.T, 4, init_centroids=init_centroids, iterations=10)
 
 A_end_d, fig, ax = plot_parliament(A_end, n, m, parties)
 st.pyplot(fig)
@@ -289,11 +300,16 @@ A_max = np.amax(A_start_d, axis=0)
 init_centroids = np.array([[A_max[0], 0, A_min[0], 0],
                            [0, A_max[1], 0, A_min[0]]], dtype=float)
 
-k_means(A_end_d.T, 4, init_centroids=init_centroids, iterations=10)
+# k_means(A_end_d.T, 4, init_centroids=init_centroids, iterations=10)
 
 
 
 
+df_out = pd.DataFrame(A_end_d, columns=['1. Hauptachse', '2. Hauptachse', '3. Hauptachse'])
+df_out['Partei'] = parties
+df_out['Name'] = p_names
+st.table(df_out)
+df_out.to_csv(os.path.join('data', 'bundestag.csv'))
 
 
 

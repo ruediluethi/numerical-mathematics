@@ -20,12 +20,65 @@ st.title('Lineare Diskriminanzfunktion')
 
 
 st.write(r'''
-    Sei $x_i = (1, {x_i}_1, ..., {x_i}_D)^\intercal \in \mathbb{R}^{D+1}$ ein Vektor, welcher die Merkmale eines Datenobjekts in der Dimension $D$ repräsentiert
-    und sei $y_i \in \{1, -1\}$ die zugehörige Klasse des Datenobjekts.
-    So ist eine lineare Abbildung gesucht, welche die Merkmale $x_i$ auf ihre Dimension $y_i$ abbildet.
+    Die Matrix $X \in \mathbb{R}^{n \times D}$ enthält die Datenpunkte von $n$ Objekten (Zeilenvektor $x_i$) mit $D$ Merkmalen/Dimensionen (Spalten).
+''')
+st.latex(r'''
+    X = \left(\begin{array}{cccc}
+        x_{11} & x_{12} & \cdots & x_{1D} \\
+        \vdots & & \ddots & \vdots \\
+        x_{n1} & x_{12} & \cdots & x_{nD} \\
+    \end{array}\right)
 ''')
 
+st.write(r'''
+    Nun soll ein linearer Klassifikator $f$ mit den Gewichten $w \in \mathbb{R}^{D+1}$ bestimmt werden, 
+    welcher die Daten der Matrix $X$ möglichst gut auf einen Zielvektor $y \in \mathbb{R}^n$ approximiert. 
+    Damit der Klassifikator nicht nur skaliert, sondern auch eine Translation berücksichtigt, wird die Datenmatrix $X$ um eine Spalte erweitert
+    und die Approximation kann als Matrixmultiplikation beschrieben werden:
+''')
 
+st.latex(r'''
+    \left(\begin{array}{cccc}
+        1 & x_{11} & x_{12} & \cdots & x_{1D} \\
+        1 & \vdots & & \ddots & \vdots \\
+        1 & x_{n1} & x_{12} & \cdots & x_{nD} \\
+    \end{array}\right)
+    \left(\begin{array}{c}
+        w_0 \\
+        \vdots \\
+        w_D
+    \end{array}\right) = \tilde{X}w
+''')
+
+st.write(r'''
+    Nun sollen die Gewichte $w$ so gewählt werden, dass folgende Fehlerfunktion $J(w)$ minimal wird.      
+''')
+
+st.latex(r'''
+    \left( y - \tilde{X}w \right)^\intercal  \left( y - \tilde{X}w \right)
+    = \sum_{i=1}^{n} \left( y_i - \tilde{x}_i w \right)^2
+    = J(w)
+''')
+
+st.write(r'''
+    Die Fehlerfunktion $J(w)$ ist dann Minimal, wenn ihre Ableitung nach den Gewichten $w$ Null ist.
+''')
+st.latex(r'''
+    \frac{\partial J(w)}{\partial w}
+    = \frac{\partial}{\partial w} ( y^\intercal y \overbrace{- y^\intercal \tilde{X} w - w^\intercal \tilde{X}^\intercal y}^{
+        \textrm{da } y^\intercal \tilde{X} w, w^\intercal \tilde{X}^\intercal y \in \mathbb{R} \quad \Rightarrow \quad 2w^\intercal \tilde{X}^\intercal y
+    } + w^\intercal \tilde{X}^\intercal \tilde{X} w ) \\
+    = 2 \tilde{X}^\intercal \tilde{X} w - 2 \tilde{X}^\intercal y
+    \stackrel{!}{=} 0 \\
+    \Leftrightarrow\quad w = \left( X^\intercal X \right)^{-1} X^\intercal y
+''')
+
+st.write(r'''
+    Um nun einen neuen Datenpunkt $x_{\textrm{neu}}$ zu klassifizieren, muss dieser bloß mit den Gewichten $w$ multipliziert werden.
+''')
+st.latex(r'''
+    f(x_{\textrm{neu}}) = \left( 1, x_{\textrm{neu},1}, ..., x_{\textrm{neu},D} \right) w = \hat{y}
+''') 
 
 st.write('Datenquelle: https://www.kaggle.com/datasets/rtatman/lego-database')
 

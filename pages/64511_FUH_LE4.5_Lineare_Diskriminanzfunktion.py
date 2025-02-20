@@ -18,68 +18,6 @@ import plotly.graph_objects as go
 
 st.title('Lineare Diskriminanzfunktion')
 
-
-st.write(r'''
-    Die Matrix $X \in \mathbb{R}^{n \times D}$ enthält die Datenpunkte von $n$ Objekten (Zeilenvektor $x_i$) mit $D$ Merkmalen/Dimensionen (Spalten).
-''')
-st.latex(r'''
-    X = \left(\begin{array}{cccc}
-        x_{11} & x_{12} & \cdots & x_{1D} \\
-        \vdots & & \ddots & \vdots \\
-        x_{n1} & x_{12} & \cdots & x_{nD} \\
-    \end{array}\right)
-''')
-
-st.write(r'''
-    Nun soll ein linearer Klassifikator $f$ mit den Gewichten $w \in \mathbb{R}^{D+1}$ bestimmt werden, 
-    welcher die Daten der Matrix $X$ möglichst gut auf einen Zielvektor $y \in \mathbb{R}^n$ approximiert. 
-    Damit der Klassifikator nicht nur skaliert, sondern auch eine Translation berücksichtigt, wird die Datenmatrix $X$ um eine Spalte erweitert
-    und die Approximation kann als Matrixmultiplikation beschrieben werden:
-''')
-
-st.latex(r'''
-    \left(\begin{array}{cccc}
-        1 & x_{11} & x_{12} & \cdots & x_{1D} \\
-        1 & \vdots & & \ddots & \vdots \\
-        1 & x_{n1} & x_{12} & \cdots & x_{nD} \\
-    \end{array}\right)
-    \left(\begin{array}{c}
-        w_0 \\
-        \vdots \\
-        w_D
-    \end{array}\right) = \tilde{X}w
-''')
-
-st.write(r'''
-    Nun sollen die Gewichte $w$ so gewählt werden, dass folgende Fehlerfunktion $J(w)$ minimal wird.      
-''')
-
-st.latex(r'''
-    \left( y - \tilde{X}w \right)^\intercal  \left( y - \tilde{X}w \right)
-    = \sum_{i=1}^{n} \left( y_i - \tilde{x}_i w \right)^2
-    = J(w)
-''')
-
-st.write(r'''
-    Die Fehlerfunktion $J(w)$ ist dann Minimal, wenn ihre Ableitung nach den Gewichten $w$ Null ist.
-''')
-st.latex(r'''
-    \frac{\partial J(w)}{\partial w}
-    = \frac{\partial}{\partial w} ( y^\intercal y \overbrace{- y^\intercal \tilde{X} w - w^\intercal \tilde{X}^\intercal y}^{
-        \textrm{da } y^\intercal \tilde{X} w, w^\intercal \tilde{X}^\intercal y \in \mathbb{R} \quad \Rightarrow \quad 2w^\intercal \tilde{X}^\intercal y
-    } + w^\intercal \tilde{X}^\intercal \tilde{X} w ) \\
-    = 2 \tilde{X}^\intercal \tilde{X} w - 2 \tilde{X}^\intercal y
-    \stackrel{!}{=} 0 \\
-    \Leftrightarrow\quad w = \left( X^\intercal X \right)^{-1} X^\intercal y
-''')
-
-st.write(r'''
-    Um nun einen neuen Datenpunkt $x_{\textrm{neu}}$ zu klassifizieren, muss dieser bloß mit den Gewichten $w$ multipliziert werden.
-''')
-st.latex(r'''
-    f(x_{\textrm{neu}}) = \left( 1, x_{\textrm{neu},1}, ..., x_{\textrm{neu},D} \right) w = \hat{y}
-''') 
-
 st.write('Datenquelle: https://www.kaggle.com/datasets/rtatman/lego-database')
 
 df_themes = pd.read_csv('data/lego/themes.csv')
@@ -163,7 +101,7 @@ color_groups: list[list[str]] = [[], [], [], [], [], [], [], [], []]
 # and group the colors into groups by there hue (and lightness/saturation)
 def w_fun(L, y_cap_scale=1):
     return np.clip((np.sin(L * np.pi*2 - np.pi/2)/2 + 0.5) * y_cap_scale, 0.0, 1.0)
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(8,2))
 for i, row in df_color_list.iterrows():
     r, g, b = mcolors.hex2color('#'+row['rgb'])
     h, l, s = colorsys.rgb_to_hls(r, g, b)
@@ -238,13 +176,18 @@ for i, row in df_color_list.iterrows():
 
             # blue
             else:
-                ax.plot([h], [l], '.', color=(r, g, b), markersize=20)
+                ax.plot([h], [l], '.', color=(r, g, b), markersize=10)
                 color_groups[7].append(row['name'])
             # elif h < 0.1:
             #     ax.plot([h], [l], '.', color=(r, g, b), markersize=20)
     
-with st.expander('color groups (not used)'):
-    st.pyplot(fig)
+# with st.expander('color groups (not used)'):
+ax.set_xlabel('Farbton')
+ax.set_ylabel('Helligkeit')
+st.pyplot(fig)
+st.caption('''
+    Alle mögliche Farben der Lego-Steine geordnet nach Farbton und Helligkeit.
+''')
 
 color_list = df_color_list['name'].to_list()
 # st.write(len(color_list))
@@ -336,8 +279,8 @@ def get_X(root_index, min_parts=100):
 
 plot_colors_A = ['red', 'purple', 'orange']
 plot_colors_B = ['blue', 'green', 'cyan']
-set_names_A = st.multiselect('Sets group A', themes_root.sort_values('count', ascending=False)['name'].to_list(), default=['Friends', 'Freestyle'])
-set_names_B = st.multiselect('Sets group B', themes_root.sort_values('count', ascending=False)['name'].to_list(), default=['Ninjago', 'Bionicle'])
+set_names_A = st.multiselect('Gruppe A besteht aus den Lego-Sets folgender Themen', themes_root.sort_values('count', ascending=False)['name'].to_list(), default=['Friends', 'Freestyle'])
+set_names_B = st.multiselect('und Gruppe B aus diesen Themen', themes_root.sort_values('count', ascending=False)['name'].to_list(), default=['Ninjago', 'Bionicle'])
 
 X_list_A = []
 for set_name in set_names_A:
@@ -355,7 +298,7 @@ X_B = np.zeros((0, len(color_list)))
 for X_ in X_list_B:
     X_B = np.vstack((X_B, X_))
 
-with st.expander('simple plotting with one color on x and y-axis'):
+with st.expander('Plot mit der Anzahl Lego-Steine einer Farbe pro Achse'):
     x_axis = st.selectbox('X-Achse', color_list, index=color_list.index('Black'))
     y_axis = st.selectbox('Y-Achse', color_list, index=color_list.index('White'))
 
@@ -404,28 +347,102 @@ A = PCA(X)
 A_A = np.zeros((X_A.shape[0], A.shape[1]))
 A_B = np.zeros((X_B.shape[0], A.shape[1]))
 
-with st.expander('PCA 2D projection'):
-    fig, ax = plt.subplots()
-    k = 0
-    for i, X_ in enumerate(X_list_A):
-        k_next = k + X_.shape[0]
-        ax.plot(A[k:k_next,0], A[k:k_next,1], 'o', alpha=0.5, label=set_names_A[i], color=plot_colors_A[i])
-        A_A[k:k_next,:] = A[k:k_next,:]
-        k = k_next
-    k_B = 0
-    for i, X_ in enumerate(X_list_B):
-        k_next = k + X_.shape[0]
-        k_B_next = k_B + X_.shape[0]
-        ax.plot(A[k:k_next,0], A[k:k_next,1], 'o', alpha=0.5, label=set_names_B[i], color=plot_colors_B[i])
-        A_B[k_B:k_B_next,:] = A[k:k_next,:]
-        k = k_next
-        k_B = k_B_next
+fig, ax = plt.subplots()
+k = 0
+for i, X_ in enumerate(X_list_A):
+    k_next = k + X_.shape[0]
+    ax.plot(A[k:k_next,0], A[k:k_next,1], 'o', alpha=0.5, label=set_names_A[i], color=plot_colors_A[i])
+    A_A[k:k_next,:] = A[k:k_next,:]
+    k = k_next
+k_B = 0
+for i, X_ in enumerate(X_list_B):
+    k_next = k + X_.shape[0]
+    k_B_next = k_B + X_.shape[0]
+    ax.plot(A[k:k_next,0], A[k:k_next,1], 'o', alpha=0.5, label=set_names_B[i], color=plot_colors_B[i])
+    A_B[k_B:k_B_next,:] = A[k:k_next,:]
+    k = k_next
+    k_B = k_B_next
 
-    # ax.plot(A_A[:,0], A_A[:,1], '.', label='Group A', color='red')
-    # ax.plot(A_B[:,0], A_B[:,1], '.', label='Group B', color='blue')
+# ax.plot(A_A[:,0], A_A[:,1], '.', label='Group A', color='red')
+# ax.plot(A_B[:,0], A_B[:,1], '.', label='Group B', color='blue')
 
-    ax.legend()
-    st.pyplot(fig)
+st.write('''
+    Für jedes Legeo-Set wird die Anzahl der Steine pro Farbe gezählt und 
+    durch die gesamt Anzahl der Steine eines Sets geteilt.
+    So wird jedes Set durch einen Zeilenvektor $x_i$ repräsentiert,
+    welcher als Merkmale die jeweilige prozentualen Anteile der Steinfarbe enthält.
+''')
+
+ax.legend()
+st.pyplot(fig)
+st.caption('''
+    Die Lego-Sets aus den gewählten Themen werden mittels PCA auf die zwei (respektive drei) Hauptachsen projiziert
+    und dem Thema entsprechend eingefärbt.
+''')
+
+st.write(r'''
+    Die Matrix $X \in \mathbb{R}^{n \times D}$ enthält die Datenpunkte von $n$ Objekten (Zeilenvektor $x_i$) 
+    mit $D$ Merkmalen/Dimensionen (Spalten - in diesem Falle die Hauptachsen).
+''')
+
+st.latex(r'''
+    X = \left(\begin{array}{cccc}
+        x_{11} & x_{12} & \cdots & x_{1D} \\
+        \vdots & & \ddots & \vdots \\
+        x_{n1} & x_{12} & \cdots & x_{nD} \\
+    \end{array}\right)
+''')
+
+st.write(r'''
+    Nun soll ein linearer Klassifikator $f$ mit den Gewichten $w \in \mathbb{R}^{D+1}$ bestimmt werden, 
+    welcher die Daten der Matrix $X$ möglichst gut auf einen Zielvektor $y \in \mathbb{R}^n$ approximiert. 
+    Damit der Klassifikator nicht nur skaliert, sondern auch eine Translation berücksichtigt, wird die Datenmatrix $X$ um eine Spalte erweitert
+    und die Approximation kann als Matrixmultiplikation beschrieben werden:
+''')
+
+st.latex(r'''
+    \left(\begin{array}{cccc}
+        1 & x_{11} & x_{12} & \cdots & x_{1D} \\
+        1 & \vdots & & \ddots & \vdots \\
+        1 & x_{n1} & x_{12} & \cdots & x_{nD} \\
+    \end{array}\right)
+    \left(\begin{array}{c}
+        w_0 \\
+        \vdots \\
+        w_D
+    \end{array}\right) = \tilde{X}w
+''')
+
+st.write(r'''
+    Nun sollen die Gewichte $w$ so gewählt werden, dass folgende Fehlerfunktion $J(w)$ minimal wird.      
+''')
+
+st.latex(r'''
+    \left( y - \tilde{X}w \right)^\intercal  \left( y - \tilde{X}w \right)
+    = \sum_{i=1}^{n} \left( y_i - \tilde{x}_i w \right)^2
+    = J(w)
+''')
+
+st.write(r'''
+    Die Fehlerfunktion $J(w)$ ist dann Minimal, wenn ihre Ableitung nach den Gewichten $w$ Null ist.
+''')
+st.latex(r'''
+    \frac{\partial J(w)}{\partial w}
+    = \frac{\partial}{\partial w} ( y^\intercal y \overbrace{- y^\intercal \tilde{X} w - w^\intercal \tilde{X}^\intercal y}^{
+        \textrm{da } y^\intercal \tilde{X} w, w^\intercal \tilde{X}^\intercal y \in \mathbb{R} \quad \Rightarrow \quad 2w^\intercal \tilde{X}^\intercal y
+    } + w^\intercal \tilde{X}^\intercal \tilde{X} w ) \\
+    = 2 \tilde{X}^\intercal \tilde{X} w - 2 \tilde{X}^\intercal y
+    \stackrel{!}{=} 0 \\
+    \Leftrightarrow\quad w = \left( X^\intercal X \right)^{-1} X^\intercal y
+''')
+
+st.write(r'''
+    Um nun einen neuen Datenpunkt $x_{\textrm{neu}}$ zu klassifizieren, muss dieser bloß mit den Gewichten $w$ multipliziert werden.
+''')
+st.latex(r'''
+    f(x_{\textrm{neu}}) = \left( 1, x_{\textrm{neu},1}, ..., x_{\textrm{neu},D} \right) w = \hat{y}
+''') 
+
 
 
 def classify(X_a, X_b):
@@ -459,6 +476,17 @@ def classify(X_a, X_b):
 
 classify(A_A[:,0:2], A_B[:,0:2])
 
+
+st.write(r'''
+    Die Trennlinie kann auch ein Polynom zweiten Grades sein.     
+''')
+st.latex(r'''
+    X = \left(\begin{array}{ccccccc}
+        x_{11} & x_{11}^2 & x_{11} & x_{11}^2 & \cdots & x_{1D} & x_{1D}^2 \\
+        \vdots & & \ddots & \vdots \\
+        x_{n1} & x_{n1}^2 & x_{12} & x_{12}^2 & \cdots & x_{nD} & x_{nD}^2 \\
+    \end{array}\right)
+''')
 
 
 def classify_poly(X_a, X_b):

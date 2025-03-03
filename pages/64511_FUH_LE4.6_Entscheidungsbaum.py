@@ -118,7 +118,9 @@ X_list = []
 for set_name in set_names:
     X_list.append(get_X(set_name, min_parts=100))
 
+
 st.header('Informationsgewinn (ID3, C4.5)')
+
 
 st.write(r'''
     Menge der Lego-Sets $T$ aus $c_1, ..., c_n$ verschiedenen Lego-Themes Klassen
@@ -128,23 +130,29 @@ st.latex(r'''
    entropy(T) = -\sum_{k=1}^{n} p_k \log_2 p_k     
 ''')
 
-X = np.zeros((0, len(part_types_ids)+1))
-for i, X_ in enumerate(X_list):
-    X_ = np.hstack((X_, np.ones((X_.shape[0], 1))*i))
-    X = np.vstack((X, X_))
-
-def entropy(p, do_print=False):
+def entropy(p, set_names, do_print=False):
     entropy_T = 0
     for i, set_name in enumerate(set_names):
         # count = X[X[:,-1] == i].shape[0]
         count = p[p == i].shape[0]
         p_i = count / p.shape[0]
+        if p_i == 0.0:
+            continue
         entropy_T -= p_i * np.log2(p_i)
         if do_print:
             st.write(f'$c_{i+1}$: {set_name} mit $p_{i+1}$ = {count} / {p.shape[0]} = {p_i:.3f}')
     return entropy_T
 
-entropy_T = entropy(X[:,-1], do_print=True)
+
+
+X = np.zeros((0, len(part_types_ids)+1))
+for i, X_ in enumerate(X_list):
+    X_ = np.hstack((X_, np.ones((X_.shape[0], 1))*i))
+    X = np.vstack((X, X_))
+
+
+
+entropy_T = entropy(X[:,-1], set_names, do_print=True)
 st.write(f'$entropy(T)$ = {entropy_T:.3f}')
 
 st.write(r'''
@@ -154,6 +162,37 @@ st.write(r'''
 st.latex(r'''
     informationGain(T, A) = entropy(T) - \sum_{i = 1}^{m} \frac{|T_i|}{|T|} \cdot entropy(T_i)
 ''')
+
+
+with st.expander('Dummy Beispiel zur Verifizierung der Rechnung'):
+    dummy_X = pd.read_csv('data/dummy_decision_tree_data.csv')
+    dummy_X['tennis_decision'] = dummy_X['tennis_decision'].apply(lambda x: 0 if x == 'no' else 1)
+
+    x = dummy_X['tennis_decision'].to_numpy()
+
+    As = ['forecast','temperature','humidity','wind']
+    Ts = [
+        ['sunny', 'overcast', 'rainy'],
+        ['cool', 'mild', 'hot'],
+        ['high', 'normal'],
+        ['weak', 'strong']
+    ]
+
+    entropy_T = entropy(x, ['no', 'yes'])
+    st.write(f'$entropy(T)$ = {entropy_T:.3f}')
+
+    for k, A in enumerate(As):
+        information_gain = entropy_T
+
+        forecast = dummy_X[A].to_numpy()
+
+        for i, T in enumerate(Ts[k]):
+            T_i = np.argwhere(forecast == T).flatten()
+            entropy_T_i = entropy(x[T_i], ['no', 'yes'], do_print=False)
+            st.write(f'$entropy(T_{i})$ = {entropy_T_i:.3f}')
+            information_gain -= T_i.size / forecast.size * entropy_T_i
+
+        st.write(f'$entropy(T,{A}) = {round(information_gain, 3)}$')
 
 for part_type in part_types_names: #['Technic Bricks', 'Bricks']:
     i = part_types_names.index(part_type)
@@ -175,11 +214,11 @@ for part_type in part_types_names: #['Technic Bricks', 'Bricks']:
         continue
 
     # st.write(f'{part_type} <= {x_threshold}')
-    entropy_T_1 = entropy(X[T_1,-1])
+    entropy_T_1 = entropy(X[T_1,-1], set_names)
     information_gain -= T_1.size / x.size * entropy_T_1
 
     # st.write(f'{part_type} > {x_threshold}')
-    entropy_T_2 = entropy(X[T_2,-1])
+    entropy_T_2 = entropy(X[T_2,-1], set_names)
     information_gain -= T_2.size / x.size * entropy_T_2
 
     st.write(f'$informationGain(T, A)$ = {information_gain:.3f}')

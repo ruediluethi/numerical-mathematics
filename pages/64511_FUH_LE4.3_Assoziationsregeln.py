@@ -188,41 +188,13 @@ with st.expander('Beispiele'):
 # st.write(COLOR_WHEEL_NAMES)
 # st.table(tf.head(10))
 
-# data = [
-#   ['A', 'B', 'E'],
-#   ['B', 'D'],
-#   ['B', 'C'],
-#   ['A', 'B', 'D'],
-#   ['A', 'B', 'C', 'E'],
-#   ['A', 'B', 'C']
-# ]
-
-# st.write(data)
-
-l1 = []
-for d in data:
-    for elem in d:
-        if not elem in l1:
-            l1.append(elem)
-
-l1.sort()
-lk = [[l] for l in l1]
-
-def join(a, b):
-    c = a.copy()
-    for elem in b:
-        if not elem in a:
-            c.append(elem)
-    c.sort()
-    return c
-
-def a_is_in_b(a, b):
+def a_is_in_b_(a, b):
     for elem in a:
         if not elem in b:
             return False
     return True
-    
-def count_a_in_b(a, b):
+
+def count_a_in_b_(a, b):
     fig, ax = plt.subplots(figsize=(9, 3))
     
     count_summary = []
@@ -232,7 +204,7 @@ def count_a_in_b(a, b):
 
         count = 0
         for j in b:
-            if a_is_in_b(i, j):
+            if a_is_in_b_(i, j):
                 count += 1
         
         count_summary.append(count)
@@ -258,12 +230,11 @@ def count_a_in_b(a, b):
     return count_summary
 
 
-all_count_summaries = []
-all_combinations = []    
-
 st.subheader('Dokumentenhäufigkeit *(document frequency)* $df_{t_i}$')
 st.write('Anzahl der Bilder/Dokumente, die eine Farbe/Begriff $t_i$ enthalten.')
-base_colors = count_a_in_b(lk, data)
+l_colors = range(len(COLOR_WHEEL_NAMES))
+lk_colors = [[l] for l in l_colors]
+base_colors = count_a_in_b_(lk_colors, data)
 # st.write(base_colors)
 
 st.subheader('Inverse Dokumentenhäufigkeit *(inverse document frequency)* $idf_{t_i}$')
@@ -325,11 +296,96 @@ st.latex(r'''
 
 st.header('Apriori-Algorithmus')
 
+
+def join(a, b):
+    c = a.copy()
+    for elem in b:
+        if not elem in a:
+            c.append(elem)
+    c.sort()
+    return c
+
+def a_is_in_b(a, b):
+    for elem in a:
+        if not elem in b:
+            return False
+    return True
+    
+def count_a_in_b(a, b, n_elem):
+    fig, ax = plt.subplots(figsize=(9, 3))
+    
+    # st.write('---')
+    # st.write(a)
+    # st.write(b)
+
+    count_summary = []
+    bar_counter = 0
+    for k, i in enumerate(a):
+        
+
+        count = 0
+        for j in b:
+            if a_is_in_b(i, j):
+                count += 1
+        
+        count_summary.append(count)
+
+        # st.write(i, count)
+        
+        # bar_width = 1.0
+        if count > -1:
+            # bar_width = 1.0/len(a)
+            bar_counter += 1
+
+            for kk, elem in enumerate(i):
+                # col = COLOR_VALUES[elem]
+                red, green, blue = colorsys.hls_to_rgb(elem/n_elem, 0.5, 1.0)
+                # ax.bar(k*bar_width + kk/len(i)*(bar_width*0.8), count, width=(bar_width*0.8)/len(i), color=(red, green, blue))
+                ax.bar(bar_counter + 0.8/len(i)*kk, count, width=0.8/len(i), color=(red, green, blue))
+
+    ax.set_xlabel('Farbkombinationen')
+    ax.set_ylabel('Anzahl')
+
+    st.pyplot(fig)
+
+    return count_summary
+
+
+n_elem = len(COLOR_WHEEL_NAMES)
+
+# data = [
+#     np.array([1, 3, 4, 6])-1,
+#     np.array([2, 3, 5])-1,
+#     np.array([1, 2, 3, 5])-1,
+#     np.array([1, 5, 6])-1
+# ]
+# n_elem = 6
+
+# st.write(data)
+
+
+
+l1 = []
+for d in data:
+    for elem in d:
+        if not elem in l1:
+            l1.append(elem)
+
+l1.sort()
+lk = [[l] for l in l1]
+
+count_a_in_b(lk, data, n_elem)
+
+# st.write(l1)
+# st.write(lk)
+
+all_count_summaries = []
+all_combinations = [] 
 all_count_summaries.append(base_colors)
 all_combinations.append(lk)
 
 
-for k in range(0, 2):
+for k in range(0, 3):
     
     lk_1 = []
     n = len(lk)
@@ -345,7 +401,7 @@ for k in range(0, 2):
     
     lk = lk_1	
     
-    count_summary = count_a_in_b(lk, data)
+    count_summary = count_a_in_b(lk, data, n_elem)
     all_count_summaries.append(count_summary)
     all_combinations.append(lk)
 

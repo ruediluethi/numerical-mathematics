@@ -50,6 +50,9 @@ hue = np.linspace(0.0, 1.0, n_bins+1)[0:-1]
 n_cols = len(COLOR_WHEEL_NAMES)
 n_docs = img_files_list.size
 
+csv_path = os.path.join('data', 'image_colors.csv')
+clustered_colors = pd.read_csv(csv_path)
+
 st.write('''
     Zusätzlich wird als Begriffshäufigkeit $tf_{i,D}$ die Summe der Bins im entsprechenden Farbbereich berechnet.
 ''')
@@ -61,6 +64,13 @@ show_all_images = st.checkbox('Alle Bilder anzeigen')
 preview_files = []
 preview_indices = []
 for i, img_file in enumerate(img_files_list):
+
+    img_file_basename = os.path.basename(img_file)
+    img_colors = clustered_colors.loc[clustered_colors['filename'] == img_file_basename, 'colors'].values
+    if len(img_colors) > 0 and isinstance(img_colors[0], str):
+        img_colors = img_colors[0].split('/')
+    else:
+        img_colors = []
 
     show_images = True
     if i >= 15 and show_all_images == False:
@@ -157,6 +167,7 @@ for i, img_file in enumerate(img_files_list):
     # crnt_column.write(col_indices)
     if show_images:
         crnt_column.write(caption, unsafe_allow_html=True)
+        crnt_column.write(f'{", ".join(img_colors)}')
 
 st.header('Gewichtung')
 

@@ -433,7 +433,12 @@ st.latex(r'''
     } + w^\intercal \tilde{X}^\intercal \tilde{X} w ) \\
     = 2 \tilde{X}^\intercal \tilde{X} w - 2 \tilde{X}^\intercal y
     \stackrel{!}{=} 0 \\
-    \Leftrightarrow\quad w = \left( X^\intercal X \right)^{-1} X^\intercal y
+    \Leftrightarrow\quad w = \left( X^\intercal X \right)^{-1} X^\intercal y \\
+    \Leftrightarrow\quad \underbrace{X^\intercal X}_{=A}  w = \underbrace{X^\intercal y}_{b}
+''')
+
+st.write(r'''
+    Die Gewichte $w$ können nun durch das Lösen des Gleichungssystem $Aw = b$ bestimmt werden
 ''')
 
 st.write(r'''
@@ -454,8 +459,12 @@ def classify(X_a, X_b):
     y = np.ones(n)
     y[X_a.shape[0]:] = -1
 
-    pseudo_inv = linalg.inv(X.T @ X) @ X.T
-    w = pseudo_inv @ y
+    # pseudo_inv = linalg.inv(X.T @ X) @ X.T
+    # w = pseudo_inv @ y
+    # st.write(w)
+
+    w = linalg.solve(X.T @ X, X.T @ y)
+    # st.write(w)
 
     fig, ax = plt.subplots()
     ax.plot(X[:,1][y==1], X[:,2][y==1], 'wo', markeredgecolor='k', label='Group A')

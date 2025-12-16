@@ -8,6 +8,8 @@ import colorsys
 from sklearn.cluster import KMeans
 from scipy.ndimage import gaussian_filter
 
+import pandas as pd
+
 st.title('Spektrales Clustering')
 
 examples = ['Ähnliche Farbflächen in einem Bild', '2D Punktewolke mit Distanzfunktion']
@@ -16,7 +18,9 @@ example_selection = st.radio('Auswahl eines Beispieles', examples)
 tab_img = example_selection == examples[0]
 tab_points = example_selection == examples[1]
 
-some_images = ['05.png', '23.png', '41.png', '45.png', '73.png', '49.png']
+some_images = ['05.png', '23.png', '41.png', '45.png', '73.png', '49.png']#, '09.png']
+COLOR_WHEEL_NAMES = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta']
+n_cols = len(COLOR_WHEEL_NAMES)
 
 if tab_img:
     selected_idx = 3
@@ -37,8 +41,8 @@ if tab_img:
                     st.rerun()
                     st.stop()
 
-        
-    img_path = os.path.join('data', 'photoset', some_images[selected_idx])
+    img_file_basename = some_images[selected_idx]
+    img_path = os.path.join('data', 'photoset', img_file_basename)
 
 
     image_orig = Image.open(img_path)
@@ -389,6 +393,7 @@ if tab_img:
 if tab_points:
     n_clusters = 2
 
+p = st.container()
 fig, ax = plt.subplots(1,2)
 
 labels, v_2 = spectral_clustering(W, k=n_clusters)
@@ -409,6 +414,9 @@ if tab_points:
 # st.pyplot(fig)
 # st.stop()
 
+def w_fun(L, y_cap_scale=1.5):
+    return np.clip((np.sin(L * np.pi*2 - np.pi/2)/2 + 0.5) * y_cap_scale, 0.0, 1.0)
+
 if tab_img:
 
     data = np.asarray(image)
@@ -424,6 +432,10 @@ if tab_img:
             'R': 0, 
             'G': 0,
             'B': 0,
+            'H': np.array([]),
+            'L': np.array([]),
+            'S': np.array([]),
+            'w': np.array([]),
             'mask': np.zeros((orig_size, orig_size))
         })
 
@@ -438,14 +450,24 @@ if tab_img:
         g = float(G[x_i, y_i])
         b = float(B[x_i, y_i])
 
+        h, l, s = colorsys.rgb_to_hls(r/255.0, g/255.0, b/255.0)
+
         mean_cluster_colors[label]['count'] += 1
         mean_cluster_colors[label]['R'] += r
         mean_cluster_colors[label]['G'] += g
         mean_cluster_colors[label]['B'] += b
+        mean_cluster_colors[label]['H'] = np.append(mean_cluster_colors[label]['H'], h)
+        mean_cluster_colors[label]['L'] = np.append(mean_cluster_colors[label]['L'], l)
+        mean_cluster_colors[label]['S'] = np.append(mean_cluster_colors[label]['S'], s)
+        mean_cluster_colors[label]['w'] = np.append(mean_cluster_colors[label]['w'], s**2 * w_fun(l))
 
         for x_k in range(new_to_orig_scale):
             for y_k in range(new_to_orig_scale):
                 mean_cluster_colors[label]['mask'][x_i*new_to_orig_scale + x_k, y_i*new_to_orig_scale + y_k] = 1.0
+
+    col_names = []
+
+    fig_hist, ax_hist = plt.subplots(n_clusters, 1)
 
     for i in range(n_clusters):
         count = mean_cluster_colors[i]['count']
@@ -458,17 +480,78 @@ if tab_img:
         g = mean_cluster_colors[i]['G'] / count
         b = mean_cluster_colors[i]['B'] / count
 
-        h, l, s = colorsys.rgb_to_hls(r/255.0, g/255.0, b/255.0)
+        # h, l, s = colorsys.rgb_to_hls(r/255.0, g/255.0, b/255.0)
 
-        red, green, blue = colorsys.hls_to_rgb(h, l, 1-(1-(0.2 + 0.8*s))**2 )
+        # red, green, blue = colorsys.hls_to_rgb(h, l, 1-(1-(0.2 + 0.8*s))**2 )
         # red, green, blue = colorsys.hls_to_rgb(h, l, 1.0 )
 
 
-        mean_cluster_colors[i]['R'] = red*255
-        mean_cluster_colors[i]['G'] = green*255
-        mean_cluster_colors[i]['B'] = blue*255
+        # mean_cluster_colors[i]['R'] = red*255
+        # mean_cluster_colors[i]['G'] = green*255
+        # mean_cluster_colors[i]['B'] = blue*255
+
+        H = mean_cluster_colors[i]['H']
+        L = mean_cluster_colors[i]['L']
+        S = mean_cluster_colors[i]['S']
+        w = mean_cluster_colors[i]['w']
+
+        n_bins = 100
+        H_hist, H_bins = np.histogram(H, bins=n_bins, range=(0.0, 1.0), density=True, weights=w)
+
+        s = 1-(1-(0.2 + 0.8*np.median(S)))**2
+        l = np.median(L)
+        
+        for j in range(n_bins):
+            # r, g, b = colorsys.hls_to_rgb(H_bins[j+1], 0.5, 1.0)
+            r, g, b = colorsys.hls_to_rgb(H_bins[j+1], l, s)
+            ax_hist[i].bar(H_bins[j+1], H_hist[j], width=np.abs(np.amax(H_bins) - np.amin(H_bins))/n_bins, color=(r, g, b))
+        
+        max_idx = np.argmax(H_hist)
+        r, g, b = colorsys.hls_to_rgb(H_bins[max_idx+1], l, s)
+        ax_hist[i].plot(H_bins[max_idx+1], H_hist[max_idx], 'o', markersize=12, color='#FFFFFF')
+        ax_hist[i].plot(H_bins[max_idx+1], H_hist[max_idx], 'o', markersize=8, color=(r, g, b))
+
+        mean_cluster_colors[i]['R'] = r*255
+        mean_cluster_colors[i]['G'] = g*255
+        mean_cluster_colors[i]['B'] = b*255
+
+        if np.median(S) < 0.1 or l < 0.2 or l > 0.8:
+            continue
+
+        col_borders = np.array([0.0, 0.083, 0.2, 0.42, 0.58, 0.75, 0.92, 1.0])
+        for j, c in enumerate(col_borders):
+            if j > 0:
+                c_prev = col_borders[j-1]
+
+                r, g, b = colorsys.hls_to_rgb((c_prev + c)/2, 0.5, 1.0)
+                ax_hist[i].fill([max(0.0, c_prev), max(0.0, c_prev), min(1.0, c), min(1.0, c)], 
+                                [0.0, np.amax(H_hist), np.amax(H_hist), 0.0], color=(r, g, b), alpha=0.3)
+                
+                if c_prev < H_bins[max_idx+1] and H_bins[max_idx+1] <= c:
+                    crnt_col_name = COLOR_WHEEL_NAMES[(j-1)%n_cols]
+                    if crnt_col_name not in col_names:
+                        col_names.append(crnt_col_name)
+
+        
+
+    st.pyplot(fig_hist)
+                
 
     # st.write(mean_cluster_colors)
+    st.write(col_names)
+    csv_path = os.path.join('data', 'photoset', 'features', 'image_colors.csv')
+    colors_str = '/'.join(col_names)
+    # Try to read existing CSV
+    if os.path.exists(csv_path):
+        df = pd.read_csv(csv_path)
+        # Check if filename already exists
+        if (df['filename'] == img_file_basename).any():
+            df.loc[df['filename'] == img_file_basename, 'colors'] = colors_str
+        else:
+            df = pd.concat([df, pd.DataFrame({'filename': [img_file_basename], 'colors': [colors_str]})], ignore_index=True)
+    else:
+        df = pd.DataFrame({'filename': [img_file_basename], 'colors': [colors_str]})
+    df.to_csv(csv_path, index=False)
 
     sorted_indices = sorted(range(len(mean_cluster_colors)), key=lambda i: mean_cluster_colors[i]['count'], reverse=True)
 
@@ -507,4 +590,4 @@ if tab_img:
     # fig, ax = plt.subplots()
     ax[1].imshow(image_clustered)
 
-st.pyplot(fig)
+p.pyplot(fig)

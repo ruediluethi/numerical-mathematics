@@ -50,7 +50,7 @@ hue = np.linspace(0.0, 1.0, n_bins+1)[0:-1]
 n_cols = len(COLOR_WHEEL_NAMES)
 n_docs = img_files_list.size
 
-csv_path = os.path.join('data', 'image_colors.csv')
+csv_path = os.path.join('data', 'photoset', 'features', 'image_colors.csv')
 clustered_colors = pd.read_csv(csv_path)
 
 st.write('''

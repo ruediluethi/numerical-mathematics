@@ -78,7 +78,7 @@ st.latex(r'''
   \end{align*}
 ''')
 
-st.page_link('pages/Experiment_DFT_mit_Lücke.py', label='Experiment mit einer dummy Sinus-Funktion und einer Lücke', icon='🧪')
+st.page_link('pages/Experiment_DFT_mit_Luecke.py', label='Experiment mit einer dummy Sinus-Funktion und einer Lücke', icon='🧪')
 
 st.header('Grundlagen')
 

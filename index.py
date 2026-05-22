@@ -3,7 +3,9 @@ import streamlit as st
 pages = {
     "Grundlagen": [
         st.Page("pages/0_UU_Diskrete_Fouriertransformation.py", title="Diskrete Fouriertransformation"),
-        st.Page("pages/0_UU_Lineare_Gleichungssysteme.py", title="Lineare Gleichungssysteme")
+        st.Page("pages/Experiment_DFT_mit_Luecke.py", title="Experiment DFT mit Luecke"),
+        st.Page("pages/0_UU_Lineare_Gleichungssysteme.py", title="Lineare Gleichungssysteme"),
+        st.Page("pages/0_Fourier_Reihe.py", title="Fourier Reihe")
     ],
     "Einführung in Data Science": [
         st.Page("pages/64511_FUH_LE4.0_Statistische_Methoden.py", title="4.0 Statistische Methoden"),
@@ -11,10 +13,12 @@ pages = {
         st.Page("pages/64511_FUH_LE4.2_Ähnlichkeitsmodellierung.py", title="4.2 Ähnlichkeitsmodellierung"),
         st.Page("pages/64511_FUH_LE4.3_Assoziationsregeln.py", title="4.3 Assoziationsregeln (Apriori)"),
         st.Page("pages/64511_FUH_LE4.4_Clustering.py", title="4.4 Clustering (k-Means)"),
-        st.Page("pages/64511_FUH_LE4.5_Lineare_Diskriminanzfunktion.py", title="4.5 Lineare Diskriminanzfunktion"),
         st.Page("pages/64511_FUH_LE4.6_Entscheidungsbaum.py", title="4.6 Information Gain")
     ],
     "Maschinelles Lernen": [
+        st.Page("pages/64401_FUH_2.1_Lineare_Regression.py", title="2.1 Lineare Regression"),
+        st.Page("pages/64401_FUH_2.2_Logistische_Regression.py", title="2.2 Logistische Regression"),
+        st.Page("pages/64401_FUH_2.6_Entscheidungsbaeume.py", title="2.6 Entscheidungsbäume"),
         st.Page("pages/64401_FUH_3.5_Hauptkomponentenanalyse.py", title="3.5 Hauptkomponentenanalyse"),
         st.Page("pages/0_ETH_Spektrales_Clustering.py", title="Spektrales Clustering"),
     ],
@@ -27,6 +31,9 @@ pages = {
         st.Page("pages/61811_FUH_A2.1.2_Experiment_Monte_Carlo.py", title="2.1.2 Experiment Monte Carlo"),
         st.Page("pages/61811_FUH_A3.1.1_Experiment_Lagrange.py", title="3.1.1 Experiment Lagrange"),
     ],
+    "Datasets": [
+        st.Page("pages/data_lego.py", title="Lego Database"),
+    ]
 }
 
 pg = st.navigation(pages)

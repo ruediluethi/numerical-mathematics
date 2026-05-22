@@ -47,7 +47,7 @@ if tab_img:
 
     image_orig = Image.open(img_path)
     orig_size = image_orig.width
-    new_size = st.select_slider('Das Originalbild auf folgende Größe skalieren', options=[2**i for i in range(1, 6)], value=16)
+    new_size = st.select_slider('Das Originalbild auf folgende Größe skalieren', options=[2**i for i in range(1, 7)], value=16)
     image = image_orig.resize((new_size,new_size))
     img_size = image.width
 

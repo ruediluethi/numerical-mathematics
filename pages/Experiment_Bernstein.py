@@ -60,6 +60,8 @@ def bernstein_approx(f, t, grade = 3):
             A_poly[j, i] = math.pow(t[j], i)
             A[j, i] = bernstein_base(t[j], i, grade)
 
+    st.write(A)
+
     ATA = A.T @ A
 
     b = np.reshape(f, [n,1])
@@ -119,8 +121,8 @@ for i in range(0, grade):
         approx_poly[j] = approx_poly[j] + coefs_poly[i] * math.pow(t_res[j], i)
     ax.plot(t_res, baseline)
 ax.plot(phi_part, r_part, '.')
-ax.plot(t_res, approx)
+# ax.plot(t_res, approx)
 ax.plot(t_res, approx_poly, '--')
-ax.plot(approx_[:,0], approx_[:,1], ':')
+# ax.plot(approx_[:,0], approx_[:,1], ':')
 st.pyplot(fig)
      

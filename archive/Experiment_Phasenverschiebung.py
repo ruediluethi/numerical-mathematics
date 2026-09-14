@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 st.title('Phasenverschiebung')
 
 
-@st.experimental_memo
+@st.cache_data
 def get_data():
     # raw_file = os.path.join('data', 'measurement_20230523T115545335_2', 'measurement_20230523T115545335_2_0xA440.csv')  # noqa: E501
     raw_file = os.path.join('data', 'measurement_2022-04-13T104040812_893_0xA265.csv')  # noqa: E501
@@ -40,7 +40,7 @@ n_part = st.slider('n_part', 1, 3000, 1000, 1)
 start_i = st.slider('start_i', 0, bmX.size, 20000, 1)
 end_i = start_i + n_part
 
-@st.experimental_memo
+@st.cache_data
 def get_part(start_i, end_i, t, bmX, bmY):
     fig, ax = plt.subplots()
     ax.plot(bmX)
@@ -165,7 +165,7 @@ def calc_polyline(coefs, a, b, res):
 
   return polyline
 
-@st.experimental_memo
+@st.cache_data
 def calc_rotation_freq(f, duration):
 
   fig, ax = plt.subplots()
@@ -306,10 +306,10 @@ def calc_trig_line(coefs, a, b, res = 100):
 
 order = st.slider('order', 1, 30, 10, 1)
 
-coefsX = trig_approx(bmX_part, t_cutted, order)
+coefsX = trig_approx(bmX_part, t_cutted.flatten(), order)
 approxX = calc_trig_line(coefsX, 0, 2*math.pi, res)
 
-coefsY = trig_approx(bmY_part, t_cutted, order)
+coefsY = trig_approx(bmY_part, t_cutted.flatten(), order)
 approxY = calc_trig_line(coefsY, 0, 2*math.pi, res)
 
 roundabout = np.linspace(0, 2*math.pi, res)
@@ -321,17 +321,15 @@ ax.plot(roundabout, approxX)
 ax.plot(roundabout, approxY)
 st.pyplot(fig)
 
-exit()
-
 phiX_shift = st.slider('x shift', -math.pi, math.pi, 0.0, 0.01)
 amount_of_frames = 25*10
 phiY_shift_index = st.slider('y shift', 1, amount_of_frames, round(amount_of_frames/2), 1)
 
-#if 1 == 1:
-for phiY_shift_index in range(1,amount_of_frames):
+if 1 == 1:
+# for phiY_shift_index in range(1,amount_of_frames):
   phiY_shift = -math.pi + 2*math.pi*phiY_shift_index/amount_of_frames
 
-  phiX = math.atan2(coefsX[1], coefsX[2])
+  phiX = math.atan2(coefsX.flatten()[1], coefsX.flatten()[2])
   if phiX < 0:
     phiX = phiX * -1
   else:
@@ -342,7 +340,7 @@ for phiY_shift_index in range(1,amount_of_frames):
   # approxX_max_i = np.argmax(approxX)
   # st.write(roundabout[approxX_max_i]-math.pi/2, phiX)
 
-  phiY = math.atan2(coefsY[1], coefsY[2])
+  phiY = math.atan2(coefsY.flatten()[1], coefsY.flatten()[2])
   if phiY < 0:
     phiY = phiY * -1
   else:

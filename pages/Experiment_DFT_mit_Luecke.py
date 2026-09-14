@@ -61,37 +61,54 @@ def fill_bm_with_last_value(time: np.ndarray, bmx: np.ndarray, bmy: np.ndarray):
 
     return time_filled, x_filled, y_filled
 
-def discrete_fourier_transformation(f, t):
-  # st.write(f.shape, t.shape)
-  n = f.size
+@st.cache_data
+def discrete_fourier_transformation(f, t, n_clean):
+	# st.write(f.shape, t.shape)
+	n = f.size
+	# st.write(n, n_clean)
 
-  A = np.zeros((n,n))
-  B = np.zeros((n,n))
+	A = np.zeros((n,n))
+	B = np.zeros((n,n))
 
-  p = t[-1] - t[0]
-  # st.write(p)
+	p = t[-1] - t[0]
+	# st.write(p)
 
-  for k in range(0,n):
-    for i in range(0,n):
-      A[i][k] = 2/p*math.cos(2*math.pi*k*t[i]/p)
-      B[i][k] = -2/p*math.sin(2*math.pi*k*t[i]/p)
+	k_values = [round(t[i] / p * n_clean) for i in range(n)]
+	# k_values = np.round(np.linspace(0.0, n_clean, n))
+	# k_values = [round(i / n * n_clean) for i in range(n)]
+	# k_values = np.linspace(0.0, n_clean-1, n)
 
-  f = f.reshape((n,1))
-  a = A @ f # real part
-  b = B @ f # imaginary part
+	for k in range(0,n):
+		for i in range(0,n):
+			A[i][k] = 2/p*math.cos(2*math.pi*k_values[k]*t[i]/p)
+			B[i][k] = -2/p*math.sin(2*math.pi*k_values[k]*t[i]/p)
+			# A[i][k] = 2/p*math.cos(2*math.pi*k*t[i]/p)
+			# B[i][k] = -2/p*math.sin(2*math.pi*k*t[i]/p)
+			# A[i][k] = 2/p*math.cos(2*math.pi*k*i/n)
+			# B[i][k] = -2/p*math.sin(2*math.pi*k*i/n)
 
-  frequencies = np.zeros((math.floor(n/2),4))
-  # for (let i = 3/*Math.floor(n*0.01)*/; i < n/2; i++){
-  for i in range(0,math.floor(n/2)):
-    frequency = i/p * 1000
-    norm = math.sqrt( a[i][0]*a[i][0] + b[i][0]*b[i][0] )
-    frequencies[i][0] = frequency
-    frequencies[i][1] = norm
-    frequencies[i][2] = a[i][0]
-    frequencies[i][3] = b[i][0]
+	# st.write(np.linalg.cond(A))
 
-  return frequencies[1:,]
+	# st.write(A)
 
+	f = f.reshape((n,1))
+	a = A @ f # real part
+	b = B @ f # imaginary part
+
+	frequencies = np.zeros((math.floor(n/2),4))
+	# for (let i = 3/*Math.floor(n*0.01)*/; i < n/2; i++){
+	for i in range(0,math.floor(n/2)):
+		# frequency = i/p * 1000
+		frequency = k_values[i] / p * 1000
+		norm = math.sqrt( a[i][0]*a[i][0] + b[i][0]*b[i][0] )
+		frequencies[i][0] = frequency
+		frequencies[i][1] = norm
+		frequencies[i][2] = a[i][0]
+		frequencies[i][3] = b[i][0]
+
+	return frequencies[1:,]
+
+@st.cache_data
 def fast_fourier_transformation(f, duration):
   n = f.size
 
@@ -141,47 +158,66 @@ st.write('''
 st.page_link('pages/0_UU_Diskrete_Fouriertransformation.py', label='Hier gehts zur Theorie der diskreten Fouriertransformation', icon='🤓')
 
 
-# example = st.radio('Datenbeispiel', ['mit Sensordaten', 'mit überlagerten Sinus-Testdaten'], horizontal=True)
-example = 'mit überlagerten Sinus-Testdaten'
+example = st.radio('Datenbeispiel', ['mit überlagerten Sinus-Testdaten', 'mit Sensordaten'], horizontal=True)
+# example = 'mit überlagerten Sinus-Testdaten'
 
 n_part = st.slider('Anzahl Datenpunkte für die Frequenzanalyse', 1, 3000, 1000, 1)
 
 if example == 'mit überlagerten Sinus-Testdaten':
 
-  n_peak = st.slider('Anzahl Frequenzen im Signal', 1, 10, 5, 1)
+	n_peak = st.slider('Anzahl Frequenzen im Signal', 1, 10, 5, 1)
+	random_amp = st.slider('Zufällige Amplitude hinzufügen', 0.0, 2.0, 0.1, 0.01)
+	
+	freq = n_part/2/(n_peak+1)
+	freq = st.slider('Grundfrequenz', 1, n_part, 100, 1)
 
-  t = np.linspace(0.0, n_part/2500, n_part)*1000
+	t = np.linspace(0.0, 1.0, n_part)*1000
+	t_rand = np.sort(np.random.uniform(0.0, 1.0, n_part)*1000)
 
-  bm = np.zeros(n_part)
-  for i in range(1,n_peak+1):
-      bm += np.sin( t/1000 * 2*math.pi * i *2500/2/(n_peak+1)) * np.sin(i/(n_peak+1) * math.pi)
-
-  gap_n = st.slider('Größe der Lücke', 0, n_part, int(n_part*0.1), 1)
-  gap_pos = st.slider('Position der Lücke', 0.0, 1.0, 2/3)
-
-  gap_start_i = int((n_part-gap_n)*gap_pos)
-
-  with_gaps_bm = np.concatenate((bm[0:gap_start_i], bm[gap_start_i+gap_n:-1]))
-  with_gaps_t = np.concatenate((t[0:gap_start_i], t[gap_start_i+gap_n:-1]))
-
-
-  # gaps_t, gaps_bm, gaps_bmy = fill_bm_with_last_value(with_gaps_t, with_gaps_bm, np.zeros(with_gaps_bm.size))
-  gaps_t = np.copy(t)
-  gaps_bm = np.copy(bm)
-
-  gaps_bm[gap_start_i:gap_start_i+gap_n] = np.zeros(gap_n)
-
-  # gaps_bm = np.copy(bm)
-
-  clean_t = np.copy(t)
-  clean_bm = np.copy(bm)
-
-  # with_gaps_t = np.copy(gaps_t)
-  # with_gaps_bm = np.copy(gaps_bm)
+	bm = np.zeros(n_part)
+	bm_rand = np.zeros(n_part)
+	for i in range(1,n_peak+1):
+		bm += np.sin( t/1000 * 2*math.pi * freq*i) * np.sin(i/(n_peak+1) * math.pi)
+		bm_rand += np.sin( t_rand/1000 * 2*math.pi * freq*i) * np.sin(i/(n_peak+1) * math.pi)
+      
+		bm += np.random.normal(0, random_amp, n_part)
+		bm_rand += np.random.normal(0, random_amp, n_part)
 
 
-  gaps_container = st.container()
-  clean_container = st.container()
+	gap_n = st.slider('Größe der Lücke', 0, n_part, int(n_part*0.1), 1)
+	gap_pos = st.slider('Position der Lücke', 0.0, 1.0, 2/3)
+
+	gap_start_i = int((n_part-gap_n)*gap_pos)
+
+	if st.checkbox('Zufällig verteilte Zeitpunkte verwenden'):
+		with_gaps_bm = np.concatenate((bm_rand[0:gap_start_i], bm_rand[gap_start_i+gap_n:-1]))
+		with_gaps_t = np.concatenate((t_rand[0:gap_start_i], t_rand[gap_start_i+gap_n:-1]))
+		# with_gaps_bm = np.copy(bm_rand)
+		# with_gaps_t = np.copy(t_rand)
+	else:
+		# with_gaps_bm = np.concatenate((bm[0:gap_start_i], bm[gap_start_i+gap_n:-1]))
+		# with_gaps_t = np.concatenate((t[0:gap_start_i], t[gap_start_i+gap_n:-1]))
+		with_gaps_bm = np.copy(bm)
+		with_gaps_t = np.copy(t)
+
+
+	# gaps_t, gaps_bm, gaps_bmy = fill_bm_with_last_value(with_gaps_t, with_gaps_bm, np.zeros(with_gaps_bm.size))
+	gaps_t = np.copy(t)
+	gaps_bm = np.copy(bm)
+
+	gaps_bm[gap_start_i:gap_start_i+gap_n] = np.zeros(gap_n)
+
+	# gaps_bm = np.copy(bm)
+
+	clean_t = np.copy(t)
+	clean_bm = np.copy(bm)
+
+	# with_gaps_t = np.copy(gaps_t)
+	# with_gaps_bm = np.copy(gaps_bm)
+
+
+	# gaps_container = st.container()
+	# clean_container = st.container()
 
 else:
   raw_file_ = os.path.join('data', 'demo_sensordata.csv')
@@ -190,61 +226,95 @@ else:
 
   # st.write(df_.head())
 
-  t_with_gaps = df_['time'].to_numpy()
-  t_with_gaps = t_with_gaps - t_with_gaps[0]
-  bmX_with_gaps = df_['24'].to_numpy()
-  bmY_with_gaps = df_['25'].to_numpy()
+  t_raw = df_['time'].to_numpy()
+  t_raw = (t_raw - t_raw[0])/1000
+  bmX_raw = df_['24'].to_numpy()
+  bmY_raw = df_['25'].to_numpy()
+  bm_raw = np.sqrt(bmX_raw**2 + bmY_raw**2)
 
-  start_gaps_t = st.slider('Zeitpunkt des zu Analysierenden Zeitintervals in ms', 0.0, t_with_gaps[-1]/1000, 2.5)*1000
+  start_gaps_t = st.slider('Zeitpunkt des zu Analysierenden Zeitintervals in s', 0.0, t_raw[-1]/1000, 2.5)*1000
+  plot_container = st.container()
   gap_n = st.slider('Größe der Lücke', 0, n_part, int(n_part*0.1), 1)
   gap_pos = st.slider('Position der Lücke', 0.0, 1.0, 2/3)
 
-  gaps_container = st.container()
-  start_gaps_index = np.where(t_with_gaps > start_gaps_t)[0][0]
+  # gaps_container = st.container()
+  start_gaps_index = np.where(t_raw > start_gaps_t)[0][0]
   # start_gaps_index = 16330
 
-  gap_start_i = start_gaps_index+int((n_part-gap_n)*gap_pos)
+  # gap_start_i = start_gaps_index+int((n_part-gap_n)*gap_pos)
 
-  t_with_gaps = np.concatenate((t_with_gaps[:gap_start_i], t_with_gaps[gap_start_i+gap_n:]))
-  bmX_with_gaps = np.concatenate((bmX_with_gaps[:gap_start_i], bmX_with_gaps[gap_start_i+gap_n:]))
-  bmY_with_gaps = np.concatenate((bmY_with_gaps[:gap_start_i], bmY_with_gaps[gap_start_i+gap_n:]))
+  # t_with_gaps = np.concatenate((t_with_gaps[:gap_start_i], t_with_gaps[gap_start_i+gap_n:]))
+  # bmX_with_gaps = np.concatenate((bmX_with_gaps[:gap_start_i], bmX_with_gaps[gap_start_i+gap_n:]))
+  # bmY_with_gaps = np.concatenate((bmY_with_gaps[:gap_start_i], bmY_with_gaps[gap_start_i+gap_n:]))
 
-  bm_with_gaps = np.sqrt(bmX_with_gaps**2 + bmY_with_gaps**2)
+  with_gaps_t = t_raw[start_gaps_index:start_gaps_index+n_part]
+  with_gaps_bmX = bmX_raw[start_gaps_index:start_gaps_index+n_part]
+  with_gaps_bmY = bmY_raw[start_gaps_index:start_gaps_index+n_part]
+  # with_gaps_bm = bm_raw[start_gaps_index:start_gaps_index+n_part]
+  with_gaps_bm = with_gaps_bmX
+
+  st.write(with_gaps_t.size)
+
+  clean_t, clean_bmX, clean_bmY = fill_bm_with_last_value(with_gaps_t, with_gaps_bmX, with_gaps_bmY)
+  # clean_bm = np.sqrt(clean_bmX**2 + clean_bmY**2)
+  clean_bm = clean_bmX
+  st.write(clean_t.size)
 
   
 
-  t_, bmX_, bmY_ = fill_bm_with_last_value(t_with_gaps, bmX_with_gaps, bmY_with_gaps)
-  bm_ = np.sqrt(bmX_**2 + bmY_**2)
+  gaps_t = np.copy(clean_t)
+  gaps_bm = np.copy(clean_bm)
+
+  gap_start_i = int((n_part-gap_n)*gap_pos)
+  gaps_bm[gap_start_i:gap_start_i+gap_n] = np.zeros(gap_n)
+
+  gap_start_t = gaps_t[gap_start_i]
+  gap_end_t = gaps_t[gap_start_i+gap_n]
+
+  # with_gaps_gap_indices = np.where((with_gaps_t >= gap_start_t) & (with_gaps_t <= gap_end_t))[0]
+  # with_gaps_t = np.delete(with_gaps_t, with_gaps_gap_indices)
+  # with_gaps_bm = np.delete(with_gaps_bm, with_gaps_gap_indices)
+
+  # with_gaps_valid_indices = with_gaps_t <= clean_t[-1]
+  # with_gaps_t = with_gaps_t[with_gaps_valid_indices]
+  # with_gaps_bm = with_gaps_bm[with_gaps_valid_indices]
+
   
-  plot_container = st.container()
-  # start_gaps_t = st.slider('Zeitpunkt eines Funklücken behafteten Zeitintervals in ms', 0.0, t_[-1]/1000, 2.5)*1000
-  gaps_container = st.container()
-  # start_gaps_index = np.where(t_ > start_gaps_t)[0][0]
-  # st.write(start_gaps_index)
-  start_clean_t = st.slider('Zeitpunkt eines Zeitintervals ohne Lücken in s', 0.0, t_[-1]/1000, 3.2)*1000
-  clean_container = st.container()
-  start_clean_index = np.where(t_ > start_clean_t)[0][0]
 
-  gaps_t = t_[start_gaps_index:start_gaps_index+n_part]
-  gaps_bm = bmX_[start_gaps_index:start_gaps_index+n_part]
 
-  clean_t = t_[start_clean_index:start_clean_index+n_part]
-  clean_bm = bmX_[start_clean_index:start_clean_index+n_part]
+  # t_, bmX_, bmY_ = fill_bm_with_last_value(t_with_gaps, bmX_with_gaps, bmY_with_gaps)
+  # bm_ = np.sqrt(bmX_**2 + bmY_**2)
+  
+  # plot_container = st.container()
+  # # start_gaps_t = st.slider('Zeitpunkt eines Funklücken behafteten Zeitintervals in ms', 0.0, t_[-1]/1000, 2.5)*1000
+  # gaps_container = st.container()
+  # # start_gaps_index = np.where(t_ > start_gaps_t)[0][0]
+  # # st.write(start_gaps_index)
+  # # start_clean_t = st.slider('Zeitpunkt eines Zeitintervals ohne Lücken in s', 0.0, t_[-1]/1000, 3.2)*1000
+  # start_clean_t = start_gaps_t
+  # clean_container = st.container()
+  # start_clean_index = np.where(t_ > start_clean_t)[0][0]
 
-  gaps_indices_with_gaps = np.where((gaps_t[0] <= t_with_gaps) & (t_with_gaps <= gaps_t[-1]))[0].flatten()
-  with_gaps_t = t_with_gaps[gaps_indices_with_gaps]
-  with_gaps_bm = bmX_with_gaps[gaps_indices_with_gaps]
+  # gaps_t = t_[start_gaps_index:start_gaps_index+n_part]
+  # gaps_bm = bm_[start_gaps_index:start_gaps_index+n_part]
+
+  # clean_t = t_[start_clean_index:start_clean_index+n_part]
+  # clean_bm = bm_[start_clean_index:start_clean_index+n_part]
+
+  # gaps_indices_with_gaps = np.where((gaps_t[0] <= t_with_gaps) & (t_with_gaps <= gaps_t[-1]))[0].flatten()
+  # with_gaps_t = t_with_gaps[gaps_indices_with_gaps]
+  # with_gaps_bm = bm_with_gaps[gaps_indices_with_gaps]
 
 
 
 
   fig, ax = plt.subplots(figsize=(8,1))
-  ax.plot(t_/1000, bm_, 'lightgray', label='Signal')
+  ax.plot(t_raw/1000, bmX_raw, 'lightgray', label='Rohsignal')
 
-  ax.plot(gaps_t/1000, gaps_bm, color=gaps_color, label='Zeitfenster mit Lücke')
-  ax.plot(clean_t/1000, clean_bm, color=clean_color, label='Zeitfenster ohne Lücke')
+  ax.plot(clean_t/1000, clean_bm, color=clean_color, label='Zeitfenster')
 
   ax.set_xlabel('Zeit in s')
+  ax.legend()
   plot_container.pyplot(fig)
   plot_container.caption('Gesamtsignal mit den ausgewählten Zeitfenstern')
 
@@ -258,15 +328,16 @@ ax.plot(gaps_t, gaps_bm, color='lightgray')
 clean_bm = von_hann_window(clean_bm, clean_t)
 ax.plot(clean_t, clean_bm, color=clean_color, label='ohne Lücke')
 gaps_bm = von_hann_window(gaps_bm, gaps_t)
-ax.plot(gaps_t, gaps_bm, color=gaps_color, label='mit Lücke')
-ax.legend()
+ax.plot(gaps_t, gaps_bm, color=gaps_color, label='mit Lücke (aufgefüllt)')
 
 ax.set_xlabel('Zeit in ms')
 with_gaps_bm = von_hann_window(with_gaps_bm, with_gaps_t)
-# ax.plot(with_gaps_t, with_gaps_bm, '.', color=discrete_color, label='Zeitfenster mit Lücke')
+ax.plot(with_gaps_t, with_gaps_bm, '.', color=discrete_color, label='Datenpunkte mit Lücke')
 
-gaps_container.pyplot(fig)
-gaps_container.caption('''
+ax.legend()
+
+st.pyplot(fig)
+st.caption('''
   Zeitlicher Verlauf des Beispielsignals.
   Im Hintergrund grau dargestellt sind die Originaldaten.
   Für die Transformationen wurde das Signal durch eine von-Hann-Fensterfunktion weiterverarbeitet.
@@ -291,7 +362,7 @@ st.write('Für die FFT des Signals mit Lücke wurden die fehlenden Datenpunkten 
 
 gaps_freq = fast_fourier_transformation(gaps_bm, gaps_t[-1] - gaps_t[0])
 clean_freq = fast_fourier_transformation(clean_bm, clean_t[-1] - clean_t[0])
-with_gaps_freq = discrete_fourier_transformation(with_gaps_bm, with_gaps_t)
+with_gaps_freq = discrete_fourier_transformation(with_gaps_bm, with_gaps_t, clean_t.size)
 
 
 fig, ax = plt.subplots(figsize=(8,4))
@@ -336,153 +407,136 @@ st.pyplot(fig_freq)
 st.caption('Ausschnitt des Frequenzspektrums zur jeweils höchsten Amplitude der drei unterschiedlichen Strategien.')
 
 
-st.stop()
+st.warning('Achtung: Der folgende Teil wurde durch KI generiert')
 
+st.write(r'''
+# DFT mit Datenlücken
 
-# signal_type = st.radio('Signal', ['Bm X', 'Bm Y', 'Bm Betrag'], index=0)
-# if signal_type == 'Bm Y':
-#     bmX = bmY
-# elif signal_type == 'Bm Betrag':
-#     bmX = np.sqrt(bmX**2 + bmY**2)
+## Ausgangsproblem
 
-# t = np.array([])
-# for index, row in df.iterrows():
-#     t = np.append(t, pd.Timestamp(row['time']).timestamp() * 1000)
+Die klassische **FFT** (Fast Fourier Transform) ist ein effizienter Algorithmus zur Berechnung der **DFT** (Diskrete Fourier Transformation) – setzt aber gleichmässige Abtastung voraus. Bei fehlenden Datenpunkten (Lücken im Zeitsignal) bricht diese Voraussetzung.
 
-# df_out = pd.DataFrame({'time': t, 'Bm X': bmX, 'Bm Y': bmY})
-# st.write(df_out.head())
+Typische naive Lösungen haben beide Schwächen:
 
-# df_out.to_csv('data/demo_sensordata2.csv', index=False)
+- **FFT mit Zero-Padding**: Lücken werden mit Nullen gefüllt → erfindet Daten, erzeugt Leakage-Artefakte
+- **DFT mit $k = 0 \ldots n$** wobei $n$ = Anzahl vorhandener Punkte: Die Frequenzachse ist gestaucht, da $k$ nie die echte Nyquist-Frequenz des ursprünglichen Gitters erreicht
 
+---
 
-# fig, ax = plt.subplots()
-# ax.plot(np.diff(t))
-# st.pyplot(fig)
+## Warum die DFT grundsätzlich mit Lücken funktioniert
 
-# fig, ax = plt.subplots()
-# ax.plot(bmX)
-# st.pyplot(fig)
+Die DFT-Matrix ist definiert als:
 
-start_i = st.slider('start_i', 0, t.size, int(t.size/2), 1)
+$$A_{ik} = \frac{2}{p} \cos\!\left(2\pi k \frac{t_i}{p}\right), \quad B_{ik} = -\frac{2}{p} \sin\!\left(2\pi k \frac{t_i}{p}\right)$$
 
+mit der Periode $p = t_{\text{end}} - t_{\text{start}}$ und den tatsächlichen Zeitstempeln $t_i$.
 
-gap = st.slider('Größe der Lücke', 0, 1000, 200, 1)
-gap_pos = st.slider('Position der Lücke', 0.0, 1.0, 2/3)
+Das Spektrum wird durch Lösung des linearen Gleichungssystems
 
-end_i = start_i + math.floor((n_part-gap)*gap_pos)
-start_i2 = end_i + gap
-end_i2 = start_i2 + math.ceil((n_part-gap)*(1-gap_pos))
+$$A \cdot a = f, \quad B \cdot b = f$$
 
-t_part = t[start_i:end_i]
-t_part2 = t[start_i2:end_i2]
+berechnet – **nicht** über ein direktes Skalarprodukt. Für das Gleichungssystem ist keine Orthogonalität der Basisfunktionen nötig, solange die Matrix $A$ invertierbar ist. Analog zur Polynominterpolation mit einer Vandermonde-Matrix: die Stützstellen dürfen beliebig verteilt sein, solange das System eindeutig lösbar bleibt.
 
-# t_parts = t_parts - t_parts[0]
+Das bedeutet: **Die DFT braucht grundsätzlich keine gleichmässige Abtastung** – die Zeitstempel $t_i$ können beliebig sein.
 
-bmX_part = bmX[start_i:end_i]
-bmY_part = bmY[start_i:end_i]
+---
 
-bmX_part2 = bmX[start_i2:end_i2]
-bmY_part2 = bmY[start_i2:end_i2]
+## Das Problem bei nicht-uniformen Zeitstempeln
 
-# ax.plot(t_part, bmX_part)
-# ax.plot(t_part2, bmX_part2)
+### Mathematische Sicht
 
-# st.pyplot(fig)
+Bei gleichmässiger Abtastung gilt $t_i = i \cdot \Delta t$, und die Basisfunktionen sind **orthogonal** über die Punktmenge:
 
-t_part2 = t_part2 - t_part[0]
-t_part = t_part - t_part[0]
-t_parts = np.concatenate((t_part, t_part2))
+$$\sum_{i=0}^{N-1} \cos\!\left(2\pi k \frac{t_i}{p}\right) \cos\!\left(2\pi l \frac{t_i}{p}\right) = \frac{N}{2} \cdot \delta_{kl}$$
 
-bmX_parts = np.concatenate((bmX_part, bmX_part2))
+Diese Orthogonalität sorgt dafür, dass $A^T A \propto I$ – die Frequenzbins sind vollständig entkoppelt. Das Gleichungssystem vereinfacht sich zum direkten Skalarprodukt (eben der klassischen DFT-Formel), und die FFT kann es in $\mathcal{O}(N \log N)$ lösen.
 
-bmX_windowed = von_hann_window(bmX_parts, t_parts)
+Bei **zufällig verteilten** $t_i$ gilt $A^T A \not\propto I$: Die Basisfunktionen sind nicht mehr orthogonal über die konkrete Punktmenge. Das System hat zwar eine eindeutige Lösung, aber die Energie einer Frequenz "streut" in benachbarte Bins – das Spektrum wird verzerrt und verrauscht, auch wenn der Peak noch an der richtigen Stelle liegt.
 
-fig_raw, ax_raw = plt.subplots(3,1)
-ax_raw[0].plot(t_part, bmX_part, color='lightgray')
-ax_raw[0].plot(t_part2, bmX_part2, color='lightgray')
-ax_raw[1].plot(t_part, bmX_part, color='lightgray')
-ax_raw[1].plot(t_part2, bmX_part2, color='lightgray')
-ax_raw[2].plot(t_part, bmX_part, color='lightgray')
-ax_raw[2].plot(t_part2, bmX_part2, color='lightgray')
+### Physikalische Intuition
 
-ax_raw[0].plot(t_part, bmX_windowed[0:end_i-start_i], color='tab:blue')
-ax_raw[0].plot(t_part2, bmX_windowed[end_i-start_i-1:-1], color='tab:blue')
-# ax.plot(t_part2, hanning_window(bmX_part2, t_part2), color='tab:orange')
+Eine Sinusschwingung der Frequenz $f_k$ legt über eine volle Periode $p$ genau $k$ vollständige Schwingungen zurück. Bei gleichmässiger Abtastung werden diese Schwingungen **gleichmässig beprobt**: positive und negative Halbwellen werden gleich oft und gleich dicht getroffen. Die Summe der Abtastwerte einer fremden Frequenz $f_l \neq f_k$ hebt sich exakt auf – die Basisfunktionen "sehen" einander nicht.
 
+Bei zufällig verteilten Zeitstempeln ist diese Balance zerstört. Die Abtastpunkte häufen sich zufällig in bestimmten Phasenbereichen und lassen andere Phasenbereiche dünn besetzt. Eine Schwingung der Frequenz $f_k$ wird an ihren Nulldurchgängen kaum getroffen und an ihren Maxima unverhältnismässig oft – die Summe ist nicht mehr null. Das ist gleichbedeutend damit, dass eine Schwingung der Frequenz $f_k$ im Spektrum "aussieht" als wäre auch ein wenig Energie bei $f_l$ vorhanden, weil die Abtaststruktur die beiden nicht mehr sauber trennen kann.
 
+Anschaulich: Gleichmässige Abtastung ist wie ein fairer Richter, der jede Phase gleich gewichtet. Zufällige Abtastung ist ein befangener Richter, der manche Phasen überbewertet und damit die Frequenzen miteinander verwechselt.
 
-frequencies = discrete_fourier_transformation(bmX_windowed, t_parts)
+---
 
-max_i = 10+np.argmax(frequencies[10:-1,1])
-display_range = min(20, max_i)
+## Die Lösung: $k$-Mapping auf das ursprüngliche Gitter
 
-fig_freq, ax_freq = plt.subplots()
-ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
-        frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), label=r'Lücke', color='tab:blue')
+Der entscheidende Trick: Statt $k$ gleichmässig von $0$ bis $n-1$ laufen zu lassen, werden die Frequenzindizes aus den **tatsächlichen Zeitstempeln** abgeleitet:
 
+$$k\_\text{values}[i] = \text{round}\!\left(\frac{t_i}{p} \cdot N_\text{clean}\right)$$
 
-# ax.plot(frequencies[max_i-display_range:max_i+display_range,0], 
-#         frequencies[max_i-display_range:max_i+display_range,2], label=r'Real')
-# ax.plot(frequencies[max_i-display_range:max_i+display_range,0], 
-#         frequencies[max_i-display_range:max_i+display_range,3], label=r'Imag')
-# ax.legend()
-# st.pyplot(fig)
+wobei $N_\text{clean}$ die ursprüngliche Anzahl Datenpunkte ohne Lücken ist.
 
+```python
+k_values = [round(t[i] / p * n_clean) for i in range(n)]
 
+for k in range(n):
+    for i in range(n):
+        A[i][k] = 2/p * np.cos(2*np.pi * k_values[k] * t[i] / p)
+        B[i][k] = -2/p * np.sin(2*np.pi * k_values[k] * t[i] / p)
+```
 
-t_part = t[start_i:end_i2]
-t_part = t_part - t_part[0]
-bmX_part = bmX[start_i:end_i2]
-bmY_part = bmY[start_i:end_i2]
+**Warum funktioniert das?** Das Mapping stellt sicher, dass der Term im Argument
 
-signal = bmX_part
+$$k\_\text{values}[k] \cdot \frac{t_i}{p} \approx \frac{k\_\text{values}[k] \cdot k\_\text{values}[i]}{N_\text{clean}}$$
 
-sig_length = len(signal)
+näherungsweise ganzzahlig skaliert bleibt – analog zur gleichmässigen Abtastung. Die Matrix $A$ ist damit näherungsweise orthogonal, die Frequenzbins bleiben entkoppelt, und das Spektrum ist sauber.
 
+Die Frequenzachse bleibt korrekt:
 
+$$f_k = \frac{k\_\text{values}[k]}{p} \cdot 1000 \quad [\text{Hz}]$$
 
-sig_windowed_last_value = von_hann_window(signal, t_part)
-sig_windowed_last_value[end_i-start_i:start_i2-start_i] = np.ones((start_i2-end_i)).reshape((start_i2-end_i,1))*sig_windowed_last_value[end_i-start_i]
-ax_raw[1].plot(t_part, sig_windowed_last_value, color='tab:orange')
+Die Matrix bleibt **(n × n) und quadratisch** – kein Zero-Padding, kein Least-Squares, keine Regularisierung.
 
-frequencies = fast_fourier_transformation(sig_windowed_last_value, t_part[-1] - t_part[0])
-ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
-        frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), label=r'letzter Wert (fft)', color='tab:orange', alpha=0.5)
+---
 
-# frequencies = discrete_fourier_transformation(sig_windowed_last_value, t_part)
-# ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
-#         frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), ':', label=r'letzter Wert (diskret)', color='tab:orange')
+## Verhalten bei verschiedenen Lückenstrukturen
 
-sig_windowed_zeros = von_hann_window(signal, t_part)
-sig_windowed_zeros[end_i-start_i:start_i2-start_i] = np.zeros((start_i2-end_i)).reshape((start_i2-end_i,1))
-ax_raw[2].plot(t_part, sig_windowed_zeros, color='tab:green')
+| Lückentyp | FFT (Zero-Padding) | DFT (naiv, $k=0\ldots n$) | DFT (k-Mapping) |
+|---|---|---|---|
+| Keine Lücken | ✅ korrekt | ✅ korrekt | ✅ korrekt |
+| Eine grosse Lücke | ⚠️ Leakage | ⚠️ Stauchung | ✅ korrekt |
+| Viele kleine zufällige Lücken | ⚠️ schwaches Leakage | ❌ stark gestaucht | ✅ korrekt |
 
-frequencies = fast_fourier_transformation(sig_windowed_zeros, t_part[-1] - t_part[0])
-ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
-        frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), label=r'mit Nullen (fft)', color='tab:green', alpha=0.5)
+---
 
-# frequencies = discrete_fourier_transformation(sig_windowed_zeros, t_part)
-# ax_freq.plot(frequencies[max_i-display_range:max_i+display_range,0], 
-#         frequencies[max_i-display_range:max_i+display_range,1]/np.amax(frequencies[max_i-display_range:max_i+display_range,1]), ':', label=r'mit Nullen (diskret)', color='tab:green')
+## Fehlende Peaks im Spektrum
 
+Im Spektrum der korrigierten DFT fehlen Frequenzbins, wo Datenpunkte fehlen. Das ist **kein Bug** sondern eine ehrliche Aussage: An diesen Frequenzen liegen keine Abtastzeitpunkte vor, das System hat dort schlicht keine Information.
 
+Die FFT hingegen füllt diese Lücken durch die implizite Annahme gleichmässiger Abtastung – das Spektrum sieht vollständig aus, macht aber implizite Annahmen über die fehlenden Daten.
 
+---
 
-ax_freq.legend()
-ax_freq.set_xlabel('f in Hz')
-ax_freq.set_ylabel('Amplitude normiert mit Max')
-# st.pyplot(fig)
+## Verwandter Ansatz: Lomb-Scargle
 
-ax_raw[2].set_xlabel('t in ms')
+Das Lomb-Scargle-Periodogramm wurde in der Astronomie entwickelt, um Periodizitäten in unregelmässig beobachteten Lichtkurven zu finden – genau das nicht-uniforme Abtastproblem. Der Kerngedanke ist elegant: Für jede Testfrequenz $\omega$ wird ein **Phasenoffset** $\tau$ berechnet, der Sinus und Kosinus lokal orthogonalisiert:
 
-st.pyplot(fig_raw)
-st.caption('''
-  Rohdaten und drei unterschiedliche Strategien wie mit der Datenlücke umgegangen wird.
-  Die Rohdaten werden mit einer von-Hann-Fensterfunktion vorverarbeitet, bevor die Transformation durchgeführt wird.
-''')
+$$\tau(\omega) = \frac{1}{2\omega} \arctan\!\left(\frac{\sum_i \sin(2\omega t_i)}{\sum_i \cos(2\omega t_i)}\right)$$
 
-st.pyplot(fig_freq)
-st.caption('''
-  Ausschnitt aus dem Frequenzspektrum zur jeweils höchsten Amplitude der drei unterschiedlichen Strategien.
-  Die Amplitude wurde durch den jeweiligen Maximalwert normiert.
+Die Leistung bei jeder Frequenz ergibt sich dann als:
+
+$$P(\omega) = \frac{1}{2} \left[ \frac{\left(\sum_i f_i \cos(\omega(t_i - \tau))\right)^2}{\sum_i \cos^2(\omega(t_i - \tau))} + \frac{\left(\sum_i f_i \sin(\omega(t_i - \tau))\right)^2}{\sum_i \sin^2(\omega(t_i - \tau))} \right]$$
+
+Der $\tau$-Term dreht die Basis so, dass die Projektion auf Sinus und Kosinus wieder entkoppelt ist – er korrigiert genau das Problem der fehlenden Orthogonalität über die unregelmässige Punktmenge. Das Ergebnis ist statistisch als $\chi^2$-Test interpretierbar, was eine direkte Aussage über die Signifikanz eines Peaks erlaubt.
+
+**Einschränkung gegenüber dem $k$-Mapping-Ansatz**: Lomb-Scargle liefert nur eine **Leistungsschätzung** pro Frequenz – keine komplexen Koeffizienten $a_k$, $b_k$. Eine Rücktransformation zur Lückenfüllung ist damit nicht direkt möglich. Für reine Spektralanalyse (Welche Frequenzen sind vorhanden?) ist Lomb-Scargle eine bewährte Methode; für Rekonstruktion und Interpolation ist der hier beschriebene $k$-Mapping-Ansatz vorzuziehen.
+
+---
+
+## Rücktransformation und Lückenfüllung
+
+Die berechneten Koeffizienten $a_k$, $b_k$ erlauben eine Rücktransformation an **beliebigen** Zeitpunkten:
+
+$$x(t) = \sum_k a_k \cos\!\left(2\pi k \frac{t}{p}\right) + b_k \sin\!\left(2\pi k \frac{t}{p}\right)$$
+
+Das ermöglicht:
+- **Interpolation**: Rekonstruktion fehlender Punkte innerhalb des Analysefensters
+- **Extrapolation**: Vorhersage ausserhalb des Fensters (mit den üblichen Einschränkungen)
+
+Da die Signaleigenschaften sich zeitlich verändern können (Harmonische, Amplituden), sollte die Analyse **lokal in einem gleitenden Fenster** durchgeführt werden – analog zur STFT.
 ''')

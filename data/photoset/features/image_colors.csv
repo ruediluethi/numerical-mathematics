@@ -3,3 +3,6 @@ filename,colors
 05.png,red/green
 41.png,yellow/green
 45.png,yellow/cyan/magenta
+bug.jpg,yellow/green
+bug1.jpg,cyan/red/green
+bug1.png,green/cyan/red/yellow

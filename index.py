@@ -3,9 +3,8 @@ import streamlit as st
 pages = {
     "Grundlagen": [
         st.Page("pages/0_UU_Diskrete_Fouriertransformation.py", title="Diskrete Fouriertransformation"),
-        st.Page("pages/Experiment_DFT_mit_Luecke.py", title="Experiment DFT mit Luecke"),
         st.Page("pages/0_UU_Lineare_Gleichungssysteme.py", title="Lineare Gleichungssysteme"),
-        st.Page("pages/0_Fourier_Reihe.py", title="Fourier Reihe")
+        st.Page("pages/0_Fourier_Reihe.py", title="Fourier Reihe"),
     ],
     "Einführung in Data Science": [
         st.Page("pages/64511_FUH_LE4.0_Statistische_Methoden.py", title="4.0 Statistische Methoden"),
@@ -33,6 +32,17 @@ pages = {
     ],
     "Datasets": [
         st.Page("pages/data_lego.py", title="Lego Database"),
+        st.Page("pages/data_sensor.py", title="Sensordaten")
+    ]
+    ,
+    "Experimente": [
+        st.Page("pages/Experiment_Fourier_Grundfrequenz.py", title="Manueller Sinus Fit einer Grundfrequenz"),
+        st.Page("pages/Experiment_Fourier_eine_Rotation.py", title="Fit mit mehreren Frequenzen einer Rotation"),
+        st.Page("pages/Experiment_DFT_mit_Luecke.py", title="DFT mit Luecke"),
+        st.Page("pages/Experiment_Bernstein.py", title="Approximation durch Bernstein Polynome"),
+        st.Page("archive/Experiment_Phasenverschiebung.py", title="Phasenverschiebung"),
+        st.Page("pages/Experiment_Dynamic_Quadtrees.py", title="Quadtrees"),
+        st.Page("pages/Experiment_Splines.py", title="Splines")
     ]
 }
 

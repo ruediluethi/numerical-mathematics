@@ -205,7 +205,7 @@ def select_examples(D):
 
     selection = st.pills(
         "Examples",
-        options=['Boys vs. Girls', 'Turtles vs. Princesses'],
+        options=['Turtles vs. Princesses', 'Boys vs. Girls', 'Technic vs. Star Wars'],
         selection_mode="single",
     )
 
@@ -216,6 +216,9 @@ def select_examples(D):
     elif selection == 'Turtles vs. Princesses':
         default_set_names_A = ['Teenage Mutant Ninja Turtles']
         default_set_names_B = ['Disney Princess']
+    elif selection == 'Technic vs. Star Wars':
+        default_set_names_A = ['Technic']
+        default_set_names_B = ['Star Wars']
 
     set_names_A = select_set_names(D, label='Gruppe A besteht aus den Lego-Sets folgender Themen', default_set_names=default_set_names_A)
     set_names_B = select_set_names(D, label='und Gruppe B aus diesen Themen', default_set_names=default_set_names_B)

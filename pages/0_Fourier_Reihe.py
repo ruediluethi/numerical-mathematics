@@ -5,6 +5,21 @@ import pandas as pd
 import math
 import matplotlib.pyplot as plt
 
+st.title('Die Fourier-Reihe')
+
+st.subheader('Definition der trigonometrischen Reihe')
+
+st.write(r'''
+  Eine trigonometrische Reihe mit Periode $p > 0$ ist eine Funktion $s$ der Form
+''')
+
+st.latex(r'''
+  s(x) = \frac{a_0}{2} +
+	\sum_{k=1}^\infty a_k \cos\left( \frac{2\pi k x}{p} \right) +
+	\sum_{k=1}^\infty b_k \sin\left( \frac{2\pi k x}{p} \right)
+	= \sum_{k=-\infty}^\infty c_k e^{i \frac{2\pi k x}{p} }
+''')
+
 st.write('Es gilt')
 st.latex(r'''
     a \cdot \cos\left( \varphi \right) + b \cdot \sin\left( \varphi \right)
@@ -32,7 +47,7 @@ st.latex(r'''
     = c \cdot \underbrace{\sqrt{\cos^2\Delta\varphi + \sin^2\Delta\varphi}}_{=1} = c
 ''')
 
-n = 200
+n = 500
 phi = np.linspace(0, 2 * np.pi, n)
 phi_long = np.linspace(-np.pi, 3 * np.pi, n)
 
@@ -63,7 +78,8 @@ ax.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0)
 
 st.pyplot(fig)
 
-grade = st.slider('Grad der Fourier Reihe', 1, 20, 5)
+grade = st.slider('Grad der Fourier Reihe', 1, 30, 5)
+n_cut = st.slider('Anzahl der Schneiden', 1, 10, 4)
 
 C_x = np.zeros(grade)
 C_y = np.zeros(grade)
@@ -75,14 +91,23 @@ fig, ax = plt.subplots()
 f_x = np.zeros(n)
 f_y = np.zeros(n)
 with st.sidebar:
+    edit_manually = st.checkbox("manuell editieren", value=False)
     for k in range(grade):
         default_c = 0.0
-        if k == 0:
-            default_c = 1.0
-        if k == 4:
-            default_c = 0.2
-        st.subheader(f'k={k+1}')
-        c_k = st.slider(f'c_{k}', 0.0, 2.0, default_c, key=f'c_{k}')
+        # if k == 0:
+        #     default_c = 1.0
+        # if k == 4:
+        #     default_c = 0.2
+        if k%n_cut == 0:
+            default_c = 1.0 / ((k/n_cut+1)**2)
+
+        # st.write(default_c)
+
+        if edit_manually:
+            st.subheader(f'k={k+1}')
+            c_k = st.slider(f'c_{k}', 0.0, 2.0, default_c, key=f'c_{k}')
+        else:
+            c_k = default_c
         # C_x[k] = st.slider(f'C_x_{k}', -2.0, 2.0, default_c, key=f'C_x_{k}')
         # C_y[k] = st.slider(f'C_y_{k}', -2.0, 2.0, default_c, key=f'C_y_{k}')
         C_x[k] = c_k
@@ -90,7 +115,10 @@ with st.sidebar:
 
         # phase_x[k] = st.slider(f'phase_x_{k}', -2.0, 2.0, 0.0, key=f'phase_x_{k}')
         # phase_y[k] = st.slider(f'phase_y_{k}', -2.0, 2.0, np.pi/2, key=f'phase_y_{k}')
-        phase_k = st.slider(f'phase_x_{k}', -2.0, 2.0, 0.0, key=f'phase_x_{k}')
+        if edit_manually:
+            phase_k = st.slider(f'phase_{k}', -2.0, 2.0, 0.0, key=f'phase_{k}')
+        else:
+            phase_k = 0.0
         phase_x[k] = phase_k
         phase_y[k] = phase_k + np.pi/2
 
@@ -111,7 +139,7 @@ st.pyplot(fig)
 fig, ax = plt.subplots()
 ax.set_title("spike_polar plot")
 ax.set_aspect('equal')
-ax.plot(f_x, f_y, 'k.')
+ax.plot(f_x, f_y, 'k')
 st.pyplot(fig)
 
 
@@ -147,7 +175,6 @@ def trig_approx(f: np.ndarray, t: np.ndarray, K: int = 20) -> np.ndarray:
 
 
 coeffs = trig_approx(f_xy, phi, K=grade*2)
-st.write(coeffs)
 
 fig_bar, ax_bar = plt.subplots()
 ax_bar.bar(np.arange(len(coeffs)), np.abs(coeffs))
@@ -158,14 +185,16 @@ st.pyplot(fig_bar)
 
 
 fig, ax = plt.subplots()
-ax.plot(phi, f_xy, 'k-')
+ax.plot(phi, f_xy, 'k-', label='Originalfunktion')
 
 f_xy_approx = np.zeros(n)
 for k in range(grade*2):
     f_xy_k = np.real(coeffs[k])*np.cos(phi*k) + np.imag(coeffs[k])*np.sin(phi*k)
-    ax.plot(phi, f_xy_k, color='tab:blue', alpha=0.3)
     f_xy_approx += f_xy_k
+    ax.plot(phi, f_xy_k, color='tab:blue', alpha=0.3, label=f'{k}-ter Term')
+    
 
-ax.plot(phi, f_xy_approx, '--', color='tab:orange')
+ax.plot(phi, f_xy_approx, '--', color='tab:orange', label='Summe')
 
+ax.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0)
 st.pyplot(fig)

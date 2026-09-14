@@ -57,8 +57,8 @@ def bernstein_approx(f, t, grade = 3):
     A_poly = np.zeros([n,grade])
     for i in range(0,grade):
         for j in range(0,n):
-            A_poly[j, i] = math.pow(t[j], i)
-            A[j, i] = bernstein_base(t[j], i, grade)
+            A_poly[j, i] = math.pow(t.flatten()[j], i)
+            A[j, i] = bernstein_base(t.flatten()[j], i, grade)
 
     st.write(A)
 
@@ -98,7 +98,7 @@ def calc_bernsteinline(coefs, res):
         t = j/(res-1)
         b = 0
         for i in range(0, grade):
-            b = b + coefs[i]*bernstein_base(t, i, grade)
+            b = b + coefs.flatten()[i]*bernstein_base(t, i, grade)
 
         bernsteinline[j][0] = t
         bernsteinline[j][1] = b
@@ -116,9 +116,9 @@ st.write(approx_)
 for i in range(0, grade):
     baseline = np.zeros(res)
     for j in range(0, res):
-        baseline[j] = coefs[i] * bernstein_base(t_res[j], i, grade)
+        baseline[j] = coefs.flatten()[i] * bernstein_base(t_res.flatten()[j], i, grade)
         approx[j] = approx[j] + baseline[j]
-        approx_poly[j] = approx_poly[j] + coefs_poly[i] * math.pow(t_res[j], i)
+        approx_poly[j] = approx_poly.flatten()[j] + coefs_poly.flatten()[i] * math.pow(t_res.flatten()[j], i)
     ax.plot(t_res, baseline)
 ax.plot(phi_part, r_part, '.')
 # ax.plot(t_res, approx)

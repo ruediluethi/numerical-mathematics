@@ -29,31 +29,14 @@ y[n_a:] = 1
 
 set_names = np.array(list(set_names_A) + list(set_names_B), dtype=object)
 
-# Shuffle samples jointly and split into two equal halves.
-random_seed = st.slider('Random Seed', min_value=0, max_value=100, value=42, step=1)
-rng = np.random.default_rng(random_seed)
-perm = rng.permutation(n)
-X_shuffled = X[perm]
-y_shuffled = y[perm]
-set_names_shuffled = set_names[perm]
-
-if n % 2 != 0:
-    X_shuffled = X_shuffled[:-1]
-    y_shuffled = y_shuffled[:-1]
-    set_names_shuffled = set_names_shuffled[:-1]
-
-n_half = X_shuffled.shape[0] // 2
-X_train, X_test = X_shuffled[:n_half], X_shuffled[n_half:]
-y_train, y_test = y_shuffled[:n_half], y_shuffled[n_half:]
-set_names_train, set_names_test = set_names_shuffled[:n_half], set_names_shuffled[n_half:]
-
-
 
 
 st.write(r'''
-    $n$: Anzahl Dimensionen
+    $n$: Anzahl Datensätze
+         
     $k$: Anzahl Klassen
-    $m$: Anzahl Datensätze
+         
+    $d$: Anzahl Dimensionen
 
     Sei $(x, y)$ ein Element des Datensatzes $D$.
     So ist die Entropie $H$ mit den Klassen $Z = {c_1, ..., c_k}$ definiert durch
@@ -100,6 +83,25 @@ def information_gain(x, y, log=np.log2):
     return entropy(y, log) - conditional_entropy(x, y, log)
 
 
+if len(set_names) == 0:
+    st.warning('Es wurden kein Set ausgewählt. Bitte wähle mindestens ein Lego-Set aus, um fortzufahren.')
+    st.stop()
+
+# Shuffle samples jointly and split into two equal halves.
+random_seed = st.slider('Random Seed', min_value=0, max_value=100, value=42, step=1)
+rng = np.random.default_rng(random_seed)
+perm = rng.permutation(n)
+X_shuffled = X[perm]
+y_shuffled = y[perm]
+set_names_shuffled = set_names[perm]
+
+n_half = X_shuffled.shape[0] // 2
+X_train, X_test = X_shuffled[:n_half], X_shuffled[n_half:]
+y_train, y_test = y_shuffled[:n_half], y_shuffled[n_half:]
+set_names_train, set_names_test = set_names_shuffled[:n_half], set_names_shuffled[n_half:]
+
+n_test = y_test.size
+
 @dataclass
 class DecisionTreeNode:
     X: np.ndarray
@@ -115,7 +117,7 @@ class DecisionTreeNode:
     left: "DecisionTreeNode | None" = None
     right: "DecisionTreeNode | None" = None
 
-def information_gain_split(X, y, set_names, depth=0):
+def information_gain_split(X, y, set_names, depth=0, max_depth=5, subsampling=None):
     node = DecisionTreeNode(
         X=X,
         y=y,
@@ -123,11 +125,15 @@ def information_gain_split(X, y, set_names, depth=0):
         depth=depth
     )
 
-
+    d = X.shape[1]
     IG_j_max = 0.0
     IG_j_max_idx = -1
     IG_j_max_split_value = 0.0
-    for j in range(d):
+    perm = rng.permutation(d)
+    d_sub = d
+    if subsampling == 'sqrt':
+        d_sub = int(np.sqrt(d))
+    for j in perm[:d_sub]:
     # if True:
     #     j = 10
         x_j = X[:,j]
@@ -174,7 +180,7 @@ def information_gain_split(X, y, set_names, depth=0):
     node.feature_name = part_types_names[IG_j_max_idx]
     node.split_value = IG_j_max_split_value
 
-    if IG_j_max == 0.0 or depth >= 5:
+    if IG_j_max == 0.0 or depth >= max_depth:
         # st.write(np.unique(y, return_counts=True))
         return node
 
@@ -199,17 +205,76 @@ def information_gain_split(X, y, set_names, depth=0):
     # st.write(f'Klassenverteilung in der unteren Gruppe: {dict(zip(lower_classes, lower_counts))}')
     # st.write(f'Klassenverteilung in der oberen Gruppe: {dict(zip(upper_classes, upper_counts))}')
 
-    node.left = information_gain_split(X_lower, y[lower_idx], set_names_lower, depth + 1)
-    node.right = information_gain_split(X_upper, y[upper_idx], set_names_upper, depth + 1)
+    node.left = information_gain_split(X_lower, y[lower_idx], set_names_lower, depth + 1, max_depth=max_depth, subsampling=subsampling)
+    node.right = information_gain_split(X_upper, y[upper_idx], set_names_upper, depth + 1, max_depth=max_depth, subsampling=subsampling)
 
     return node
 
-decision_tree = information_gain_split(X_train, y_train, set_names_train)
+def random_forest(_X, _y, _set_names, n_trees=10, max_depth=5, random_seed=42):
+    rng = np.random.default_rng(random_seed)
+    forest = []
+
+    if n_trees == 1:
+        tree = information_gain_split(_X, _y, _set_names, max_depth=max_depth, subsampling=None)
+        forest.append(tree)
+        return forest
+
+    progress = st.progress(0)
+    for i in range(n_trees):
+        progress.progress((i + 1) / n_trees)
+        # Bootstrap sample
+        n_samples = _X.shape[0]
+        indices = rng.choice(n_samples, size=n_samples, replace=True)
+        X_sample = _X[indices]
+        y_sample = _y[indices]
+        set_names_sample = _set_names[indices]
+
+        tree = information_gain_split(X_sample, y_sample, set_names_sample, max_depth=max_depth, subsampling='sqrt')
+        forest.append(tree)
+
+    progress.empty()
+
+    return forest
+
+
+n_trees = st.slider('Amount of trees in the forest', min_value=1, max_value=100, value=10, step=1)
+
+forest = random_forest(X_train, y_train, set_names_train, n_trees=n_trees, max_depth=5, random_seed=random_seed)
+# decision_tree = information_gain_split(X_train, y_train, set_names_train)
+
+def predict_by_tree(x_i, decision_tree: DecisionTreeNode):
+    node = decision_tree
+    y_pred_i = None
+
+    while node is not None:
+
+        if node.left is None and node.right is None:
+            classes, counts = np.unique(node.y, return_counts=True)
+            y_pred_i = classes[np.argmax(counts)]
+            break
+
+        if x_i[node.feature_idx] <= node.split_value:
+            node = node.left
+        else:
+            node = node.right
+
+    return y_pred_i
+
+def predict_by_forest(x_i, forest):
+    votes = []
+    for tree in forest:
+        y_pred_i = predict_by_tree(x_i, tree)
+        votes.append(y_pred_i)
+
+    # st.write(np.bincount(votes))
+
+    return np.bincount(votes).argmax()
+
+# st.write(y_test, y_pred)
 
 
 
 ## Plotting the decision tree
-
 
 def _count_leaves(node: DecisionTreeNode) -> int:
     if node.left is None and node.right is None:
@@ -258,10 +323,14 @@ def plot_decision_tree(root: DecisionTreeNode):
 
     def _node_text(node: DecisionTreeNode) -> str:
         if node.left is None and node.right is None:
+            # st.write(node.set_names)
             classes, counts = np.unique(node.y, return_counts=True)
             class_names = [", ".join(themes_A), ", ".join(themes_B)]
             dist = "\n".join([f"{class_names[int(c)]}:{(n/node.y.size)*100:.2f}%" for c, n in zip(classes, counts)])
-            return f"{dist}\nn={node.y.size}"
+            set_names_str = "\n".join(node.set_names)
+            if len(node.set_names) > 5:
+                set_names_str = "\n".join(node.set_names[:5]) + "\n..."
+            return f"{dist}\nn={node.y.size}\n{set_names_str}"
 
         feature = node.feature_name if node.feature_name is not None else "-"
         # split = node.split_value if node.split_value is not None else 0.0
@@ -315,6 +384,43 @@ def plot_decision_tree(root: DecisionTreeNode):
     return fig
 
 
+plot_tree_idx = st.slider('Index of the tree to plot', min_value=1, max_value=n_trees, value=n_trees//2, step=1)
 
-st.pyplot(plot_decision_tree(decision_tree), clear_figure=True)
+st.pyplot(plot_decision_tree(forest[plot_tree_idx - 1]), clear_figure=True)
 
+
+
+
+y_pred = np.zeros(n_test)
+for i in range(n_test):
+    y_pred[i] = predict_by_forest(X_test[i,:], forest)
+
+
+# Step 1: indices where y_test and y_pred are both 1 (true positives).
+true_positive = np.argwhere((y_test == 1) & (y_pred == 1)).flatten()
+true_negative = np.argwhere((y_test == 0) & (y_pred == 0)).flatten()
+false_positive = np.argwhere((y_test == 0) & (y_pred == 1)).flatten()
+false_negative = np.argwhere((y_test == 1) & (y_pred == 0)).flatten()
+
+
+n_pos_test = sum(y_test == 1)
+n_neg_test = sum(y_test == 0)
+
+confusion_matrix = np.array([[len(true_positive) / n_pos_test,  len(false_positive) / n_neg_test], 
+                             [len(false_negative) / n_pos_test, len(true_negative) / n_neg_test]])
+confusion_labels = np.array([['True Positive', 'False Positive'], 
+                             ['False Negative', 'True Negative']])
+
+
+fig, ax = plt.subplots()
+im = ax.imshow(confusion_matrix)
+ax.set_xticks(np.arange(2))
+ax.set_yticks(np.arange(2))
+ax.set_xticklabels([r'$y=1$', r'$y=0$'])
+ax.set_yticklabels([r'$\hat{y} > 0.5$', r'$\hat{y} < 0.5$'])
+for i in range(2):
+    for j in range(2):
+        text = ax.text(j, i, f'{confusion_labels[i, j]}\n{confusion_matrix[i, j]*100:.2f} %', ha='center', va='center', color='black')
+
+ax.set_title('Confusion Matrix')
+st.pyplot(fig)
